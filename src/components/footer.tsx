@@ -11,10 +11,10 @@ export default function Footer() {
       <div className="flex flex-col items-center gap-1">
          {/* LiteOn Logo Image */}
           <Image
-            src="/liteon_logo.png" // Assuming the logo is in the public folder
+            src="/liteon_logo.png" // Use the uploaded logo
             alt="LiteOn Technology Logo"
-            width={100} // Adjust width as needed
-            height={20} // Adjust height as needed
+            width={150} // Adjust width for the new logo
+            height={50}  // Adjust height for the new logo
             priority // Load the logo faster
           />
         <p>
