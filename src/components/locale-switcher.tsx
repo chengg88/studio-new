@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { usePathname, useRouter } from 'next-intl/client'; // Correct import for App Router
+import { usePathname, useRouter } from 'next/navigation'; // Import from next/navigation
 import { locales } from '@/i18n';
 import {
   Select,
@@ -16,14 +16,22 @@ import { Globe } from 'lucide-react'; // Import Globe icon
 
 export default function LocaleSwitcher() {
   const t = useTranslations('LocaleSwitcher');
-  const locale = useLocale();
-  const router = useRouter();
-  const pathname = usePathname();
+  const currentLocale = useLocale();
+  const router = useRouter(); // Use next/navigation router
+  const currentPathname = usePathname(); // Use next/navigation pathname
   const [isPending, startTransition] = React.useTransition();
 
   const onSelectChange = (nextLocale: string) => {
     startTransition(() => {
-      router.replace(pathname, { locale: nextLocale });
+      // Manually replace the locale segment in the pathname
+      // This assumes the locale is always the first segment
+      const newPathname = currentPathname.startsWith(`/${currentLocale}`)
+        ? currentPathname.replace(`/${currentLocale}`, `/${nextLocale}`)
+         // Handle root path case or paths without locale prefix (though middleware should handle this)
+        : `/${nextLocale}${currentPathname === '/' ? '' : currentPathname}`;
+
+
+      router.replace(newPathname); // Use standard router replace
     });
   };
 
@@ -31,7 +39,7 @@ export default function LocaleSwitcher() {
     <div className="flex items-center">
       <Select
         onValueChange={onSelectChange}
-        defaultValue={locale}
+        defaultValue={currentLocale}
         disabled={isPending}
       >
         <SelectTrigger className="w-auto border-none shadow-none focus:ring-0 gap-1 pr-2">
@@ -49,3 +57,4 @@ export default function LocaleSwitcher() {
     </div>
   );
 }
+
