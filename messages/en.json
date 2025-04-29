@@ -1,3 +1,4 @@
+
 {
   "AppLayout": {
     "title": "OvenView",
@@ -51,6 +52,7 @@
     "oven1SettingsTitle": "Oven 1 Settings",
     "oven2SettingsTitle": "Oven 2 Settings",
     "ovenSingleSettingsTitle": "Oven Settings",
+    "oven": "Oven",
     "ovenSettingsDescription": "Configure the parameters for {ovenName}.",
     "ovenNameLabel": "Oven Name",
     "ovenNamePlaceholder": "e.g., Main Bake Oven",

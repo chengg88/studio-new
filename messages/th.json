@@ -1,3 +1,4 @@
+
 {
   "AppLayout": {
     "title": "OvenView",
@@ -51,6 +52,7 @@
     "oven1SettingsTitle": "การตั้งค่าเตาอบ 1",
     "oven2SettingsTitle": "การตั้งค่าเตาอบ 2",
     "ovenSingleSettingsTitle": "การตั้งค่าเตาอบ",
+    "oven": "เตาอบ",
     "ovenSettingsDescription": "กำหนดค่าพารามิเตอร์สำหรับ {ovenName}",
     "ovenNameLabel": "ชื่อเตาอบ",
     "ovenNamePlaceholder": "เช่น เตาอบหลัก",

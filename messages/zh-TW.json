@@ -1,3 +1,4 @@
+
 {
   "AppLayout": {
     "title": "OvenView",
@@ -51,6 +52,7 @@
     "oven1SettingsTitle": "烤箱 1 設定",
     "oven2SettingsTitle": "烤箱 2 設定",
     "ovenSingleSettingsTitle": "烤箱設定",
+    "oven": "烤箱",
     "ovenSettingsDescription": "配置 {ovenName} 的參數。",
     "ovenNameLabel": "烤箱名稱",
     "ovenNamePlaceholder": "例如：主要烘烤爐",
