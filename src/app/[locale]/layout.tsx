@@ -1,20 +1,15 @@
-import type {Metadata} from 'next';
-import {Geist, Geist_Mono} from 'next/font/google';
-import {NextIntlClientProvider} from 'next-intl'; // Import NextIntlClientProvider
-import {getMessages} from 'next-intl/server'; // Import getMessages
+import type { Metadata } from 'next';
+// Import Geist fonts from the 'geist' package
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
 import '../globals.css';
 import AppLayout from '@/components/app-layout';
-import {Toaster} from '@/components/ui/toaster';
+import { Toaster } from '@/components/ui/toaster';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+// The Geist font objects automatically handle variable names and CSS setup
+// No need for separate configuration objects like with next/font/google
 
 export const metadata: Metadata = {
   title: 'OvenView',
@@ -23,23 +18,20 @@ export const metadata: Metadata = {
 
 interface RootLayoutProps {
   children: React.ReactNode;
-  params: {locale: string};
+  params: { locale: string };
 }
 
 export default async function RootLayout({
   children,
-  params: {locale} // Destructure locale from params
+  params: { locale },
 }: Readonly<RootLayoutProps>) {
-
   // Providing all messages to the client
   // side is the easiest way to get started
   const messages = await getMessages();
 
   return (
-    <html lang={locale}> {/* Set lang attribute */}
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang={locale} className={`${GeistSans.variable} ${GeistMono.variable}`}> {/* Apply font variables to html tag */}
+      <body className={'antialiased'}> {/* Remove font variables from body, applied on html */}
         <NextIntlClientProvider messages={messages}> {/* Wrap with provider */}
           <AppLayout>{children}</AppLayout>
           <Toaster />
