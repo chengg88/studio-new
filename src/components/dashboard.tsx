@@ -269,7 +269,9 @@ export default function Dashboard() {
        <div
          className={cn(
            'grid gap-6',
-           isDualMode ? 'lg:grid-cols-2' : 'lg:grid-cols-1' // Use 2 columns for dual mode, 1 column for single mode on large screens
+           isDualMode
+             ? 'grid-cols-1 lg:grid-cols-2' // 2 columns for dual mode on large screens
+             : 'grid-cols-1 md:grid-cols-[minmax(0,_800px)] justify-center' // Single centered column with max-width for single mode
          )}
        >
          {renderOvenCard('oven1')}
@@ -278,3 +280,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
