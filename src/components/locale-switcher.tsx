@@ -3,7 +3,8 @@
 
 import * as React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { usePathname, useRouter } from 'next/navigation'; // Import from next/navigation
+// Import navigation utilities from the centralized navigation module
+import { usePathname, useRouter } from '@/navigation';
 import { locales } from '@/i18n';
 import {
   Select,
@@ -17,21 +18,14 @@ import { Globe } from 'lucide-react'; // Import Globe icon
 export default function LocaleSwitcher() {
   const t = useTranslations('LocaleSwitcher');
   const currentLocale = useLocale();
-  const router = useRouter(); // Use next/navigation router
-  const currentPathname = usePathname(); // Use next/navigation pathname
+  const router = useRouter(); // Use next-intl/navigation router hook via @/navigation
+  const currentPathname = usePathname(); // Use next-intl/navigation pathname hook via @/navigation
   const [isPending, startTransition] = React.useTransition();
 
   const onSelectChange = (nextLocale: string) => {
     startTransition(() => {
-      // Manually replace the locale segment in the pathname
-      // This assumes the locale is always the first segment
-      const newPathname = currentPathname.startsWith(`/${currentLocale}`)
-        ? currentPathname.replace(`/${currentLocale}`, `/${nextLocale}`)
-         // Handle root path case or paths without locale prefix (though middleware should handle this)
-        : `/${nextLocale}${currentPathname === '/' ? '' : currentPathname}`;
-
-
-      router.replace(newPathname); // Use standard router replace
+      // Use the router from @/navigation which handles locale switching correctly
+      router.replace(currentPathname, {locale: nextLocale});
     });
   };
 

@@ -2,8 +2,8 @@
 'use client';
 
 import type {PropsWithChildren} from 'react';
-import { Link } from 'next-intl'; // Use next-intl Link
-import { usePathname, useRouter } from 'next/navigation'; // Use next/navigation hooks
+// Import navigation utilities from the centralized navigation module
+import { Link, usePathname, useRouter } from '@/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import {LayoutDashboard, Settings as SettingsIcon, Thermometer, Menu} from 'lucide-react'; // Added Menu for mobile trigger
 
@@ -38,8 +38,8 @@ export default function AppLayout({children}: PropsWithChildren) {
 // Separated content to allow useSidebar hook within SidebarProvider context
 // This is necessary because useSidebar() needs to be called within SidebarProvider
 function AppLayoutContent({children}: PropsWithChildren) {
-    const fullPathname = usePathname(); // Use next/navigation usePathname hook
-    const router = useRouter(); // Use next/navigation router hook
+    const fullPathname = usePathname(); // Use next-intl/navigation usePathname hook via @/navigation
+    const router = useRouter(); // Use next-intl/navigation router hook via @/navigation
     const locale = useLocale(); // Get current locale
     const t = useTranslations('AppLayout');
 
@@ -60,11 +60,12 @@ function AppLayoutContent({children}: PropsWithChildren) {
 
 
   return (
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col bg-background"> {/* Ensure background color */}
         <div className="flex flex-1">
-           <Sidebar collapsible="icon" side="left" defaultCollapsed={true}>
+           {/* Use defaultCollapsed prop directly on SidebarProvider */}
+           <Sidebar collapsible="icon" side="left">
             <SidebarHeader className="p-4">
-               {/* Use Link from next-intl */}
+               {/* Use Link from @/navigation */}
               <Link href="/" className="flex items-center gap-2 font-bold text-lg text-sidebar-primary">
                 <Thermometer className="w-6 h-6" />
                 <span className="group-data-[state=expanded]:opacity-100 group-data-[state=collapsed]:opacity-0 transition-opacity duration-200">
@@ -80,7 +81,7 @@ function AppLayoutContent({children}: PropsWithChildren) {
                     isActive={isActive('/')}
                     tooltip={t('dashboard')}
                   >
-                     {/* Use Link from next-intl */}
+                     {/* Use Link from @/navigation */}
                     <Link href="/">
                       <LayoutDashboard />
                       <span>{t('dashboard')}</span>
@@ -93,7 +94,7 @@ function AppLayoutContent({children}: PropsWithChildren) {
                     isActive={isActive('/settings')}
                     tooltip={t('settings')}
                   >
-                      {/* Use Link from next-intl */}
+                      {/* Use Link from @/navigation */}
                     <Link href="/settings">
                       <SettingsIcon />
                       <span>{t('settings')}</span>
@@ -104,7 +105,7 @@ function AppLayoutContent({children}: PropsWithChildren) {
             </SidebarContent>
           </Sidebar>
           {/* SidebarInset handles the main content area positioning relative to the sidebar */}
-           <SidebarInset className="flex flex-1 flex-col w-full overflow-x-hidden max-w-full"> {/* Ensure SidebarInset is flexible */}
+           <SidebarInset className="flex flex-1 flex-col w-full overflow-x-hidden"> {/* Adjusted width handling */}
              <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
                <div className="flex items-center gap-2">
                     {/* Use SidebarTrigger for mobile toggle */}
@@ -118,9 +119,8 @@ function AppLayoutContent({children}: PropsWithChildren) {
                <LocaleSwitcher />
              </header>
             {/* Main content area */}
-            {/* Keep main content flexible, but centered within its container */}
-             <main className="flex-grow flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 w-full"> {/* Remove max-w-full here if it limits content */}
-              {children}
+            <main className="flex-grow flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"> {/* Ensure content grows */}
+               <div className="w-full mx-auto">{children}</div> {/* Centering container, removed max-w constraints if they limit width */}
             </main>
             {/* Footer remains at the bottom */}
              <Footer />
