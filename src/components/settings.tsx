@@ -86,11 +86,11 @@ export default function Settings() {
   const { control, handleSubmit, reset, watch, setValue } = form;
   const currentIsDualMode = watch('isDualMode');
 
-  // Initialize form with store data
+  // Initialize form with store data when the component mounts or store data changes
   useEffect(() => {
-    initializeStore(); // Ensure store is loaded
+    initializeStore(); // Ensure store is loaded/hydrated
     reset({
-      isDualMode: isDualMode,
+      isDualMode: isDualMode, // Use the value from the store as the default/reset value
       oven1: {
         name: ovens.oven1.name || '',
         temperatureSetpoint: ovens.oven1.temperatureSetpoint ?? 100,
@@ -106,33 +106,34 @@ export default function Settings() {
     });
   }, [isDualMode, ovens, reset, initializeStore]);
 
-   // Update store when dual mode switch changes
-   useEffect(() => {
-    setDualMode(currentIsDualMode);
-     // When switching from dual to single, ensure oven2 data isn't accidentally saved if form isn't submitted
-     if (!currentIsDualMode) {
-       // Reset oven2 form data to stored state or defaults when switching off dual mode
-       // This prevents stale form data from being unintentionally saved later
-       setValue('oven2', {
-           name: ovens.oven2.name || '',
-           temperatureSetpoint: ovens.oven2.temperatureSetpoint ?? 100,
-           programSchedule: ovens.oven2.programSchedule || '',
-           calibrationPoints: ovens.oven2.calibrationPoints || [],
-       });
-     }
-   }, [currentIsDualMode, setDualMode, setValue, ovens.oven2]);
+  // This effect was causing the infinite loop.
+  // The store's dual mode should only be updated on successful submission.
+  // The form's 'isDualMode' (watched by currentIsDualMode) handles the visual state during editing.
+  // useEffect(() => {
+  //   setDualMode(currentIsDualMode); // Problematic: updates store on every watch change
+  //   if (!currentIsDualMode) {
+  //     setValue('oven2', { /* ... reset oven2 form fields ... */ });
+  //   }
+  // }, [currentIsDualMode, setDualMode, setValue, ovens.oven2]);
 
 
   const onSubmit = (data: SettingsFormData) => {
     try {
+      // Update settings for oven1
       updateOvenSettings('oven1', data.oven1);
-      // Only update oven2 settings if in dual mode and oven2 data exists
+
+      // Update settings for oven2 only if in dual mode
       if (data.isDualMode && data.oven2) {
         updateOvenSettings('oven2', data.oven2);
       }
-      // No need to explicitly clear oven2 settings here,
-      // the `partialize` function in the store handles what gets persisted.
+      // else {
+        // Optional: Explicitly clear oven2 settings in the store if switching *off* dual mode
+        // updateOvenSettings('oven2', { name: '', temperatureSetpoint: 100, programSchedule: '', calibrationPoints: [] });
+      // }
+
+      // Update the dual mode setting in the store *after* successful submission
       setDualMode(data.isDualMode);
+
       toast({
         title: 'Settings Saved',
         description: 'Your oven configurations have been updated.',
@@ -170,7 +171,7 @@ export default function Settings() {
                   <FormControl>
                     <Switch
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={field.onChange} // RHF handles the switch state internally
                     />
                   </FormControl>
                 </FormItem>
@@ -187,9 +188,10 @@ export default function Settings() {
             <OvenSettingsForm
                 ovenId="oven1"
                 control={control}
-                currentIsDualMode={currentIsDualMode}
+                currentIsDualMode={currentIsDualMode} // Pass watched value for conditional rendering
                 toast={toast}
             />
+            {/* Conditionally render Oven 2 settings based on the watched value */}
             {currentIsDualMode && (
                  <OvenSettingsForm
                     ovenId="oven2"
