@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/form';
 import OvenSettingsForm from './oven-settings-form'; // Keep this for oven-specific parts
 import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+// Removed RadioGroup import
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch'; // Import Switch
@@ -42,14 +42,6 @@ import { Switch } from '@/components/ui/switch'; // Import Switch
 // Zod schema for validation
 const ovenSettingsSchema = z.object({
   name: z.string().min(1, 'Oven name is required').max(50, 'Name too long'),
-  // temperatureSetpoint: z.coerce // Removed
-  //   .number()
-  //   .min(0, 'Setpoint must be positive')
-  //   .max(300, 'Setpoint cannot exceed 300°C')
-  //   .optional()
-  //   .or(z.literal(0))
-  //   .or(z.nan()),
-  // programSchedule: z.string().optional(), // Removed
   offset1: z.coerce.number().optional().or(z.nan()), // Add offsets
   offset2: z.coerce.number().optional().or(z.nan()),
   offset3: z.coerce.number().optional().or(z.nan()),
@@ -116,8 +108,6 @@ export default function Settings() {
       a1019Pins: Array(8).fill('1'),
       oven1: {
         name: '',
-        // temperatureSetpoint: 100, // Removed
-        // programSchedule: '', // Removed
         offset1: 0, // Initialize offsets
         offset2: 0,
         offset3: 0,
@@ -125,8 +115,6 @@ export default function Settings() {
       },
       oven2: {
         name: '',
-        // temperatureSetpoint: 100, // Removed
-        // programSchedule: '', // Removed
         offset1: 0, // Initialize offsets
         offset2: 0,
         offset3: 0,
@@ -158,8 +146,6 @@ export default function Settings() {
       a1019Pins: storePins,
       oven1: {
         name: ovens.oven1.name || '',
-        // temperatureSetpoint: ovens.oven1.temperatureSetpoint ?? 100, // Removed
-        // programSchedule: ovens.oven1.programSchedule || '', // Removed
         offset1: ovens.oven1.offsets?.[0] ?? 0, // Map stored offsets
         offset2: ovens.oven1.offsets?.[1] ?? 0,
         offset3: ovens.oven1.offsets?.[2] ?? 0,
@@ -167,8 +153,6 @@ export default function Settings() {
       },
       oven2: {
         name: ovens.oven2.name || '',
-        // temperatureSetpoint: ovens.oven2.temperatureSetpoint ?? 100, // Removed
-        // programSchedule: ovens.oven2.programSchedule || '', // Removed
         offset1: ovens.oven2.offsets?.[0] ?? 0, // Map stored offsets
         offset2: ovens.oven2.offsets?.[1] ?? 0,
         offset3: ovens.oven2.offsets?.[2] ?? 0,
@@ -214,8 +198,6 @@ export default function Settings() {
       // Update settings for oven1
       const oven1Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
         name: data.oven1.name,
-        // temperatureSetpoint: data.oven1.temperatureSetpoint, // Removed
-        // programSchedule: data.oven1.programSchedule, // Removed
         offsets: [ // Map form offsets to store format
           data.oven1.offset1 ?? 0,
           data.oven1.offset2 ?? 0,
@@ -230,8 +212,6 @@ export default function Settings() {
       if ((data.ovenType === '1' || data.ovenType === '2') && data.oven2) {
          const oven2Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
             name: data.oven2.name,
-            // temperatureSetpoint: data.oven2.temperatureSetpoint, // Removed
-            // programSchedule: data.oven2.programSchedule, // Removed
             offsets: [ // Map form offsets to store format
               data.oven2.offset1 ?? 0,
               data.oven2.offset2 ?? 0,
@@ -259,7 +239,7 @@ export default function Settings() {
 
   // Render loading state if not hydrated
   if (!_hasHydrated) {
-      return <div>Loading settings...</div>;
+      return <div className="flex justify-center items-center h-64">Loading settings...</div>;
   }
 
 
@@ -274,63 +254,40 @@ export default function Settings() {
                 <CardDescription>Select the type of oven configuration.</CardDescription>
             </CardHeader>
             <CardContent>
-                <FormField
-                control={control}
-                name="ovenType"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
-                    <FormControl>
-                        <RadioGroup
+               <FormField
+                 control={control}
+                 name="ovenType"
+                 render={({ field }) => (
+                   <FormItem>
+                     <FormLabel>Oven Type</FormLabel>
+                     <Select
                         onValueChange={(value) => {
-                          field.onChange(value);
-                          // When changing oven type, ensure Oven 2 pin assignments are reset if needed
-                          if (value === '3' || value === '4') {
-                              const currentPins = form.getValues('a1019Pins');
-                              const updatedPins = currentPins.map(pin => pin === '2' ? '1' : pin); // Force pins assigned to Oven 2 back to Oven 1
-                              setValue('a1019Pins', updatedPins as A1019PinValue[]);
-                          }
-                         }}
-                        value={field.value}
-                        className="flex flex-col space-y-1"
-                        >
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                            <RadioGroupItem value="1" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                            A. 1 double door oven
-                            </FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                            <RadioGroupItem value="2" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                             B. 2 single door ovens
-                            </FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                             <RadioGroupItem value="3" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                             C. 1 single door oven
-                            </FormLabel>
-                        </FormItem>
-                         <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                             <RadioGroupItem value="4" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                             D. ENOHK Oven
-                            </FormLabel>
-                        </FormItem>
-                        </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
+                            field.onChange(value);
+                            // When changing oven type, ensure Oven 2 pin assignments are reset if needed
+                            if (value === '3' || value === '4') {
+                                const currentPins = form.getValues('a1019Pins');
+                                const updatedPins = currentPins.map(pin => pin === '2' ? '1' : pin); // Force pins assigned to Oven 2 back to Oven 1
+                                setValue('a1019Pins', updatedPins as A1019PinValue[]);
+                            }
+                        }}
+                        value={field.value as OvenTypeOption}
+                      >
+                       <FormControl>
+                         <SelectTrigger>
+                           <SelectValue placeholder="Select oven configuration" />
+                         </SelectTrigger>
+                       </FormControl>
+                       <SelectContent>
+                         <SelectItem value="1">A. 1 double door oven</SelectItem>
+                         <SelectItem value="2">B. 2 single door ovens</SelectItem>
+                         <SelectItem value="3">C. 1 single door oven</SelectItem>
+                         <SelectItem value="4">D. ENOHK Oven</SelectItem>
+                       </SelectContent>
+                     </Select>
+                     <FormMessage />
+                   </FormItem>
+                 )}
+               />
             </CardContent>
         </Card>
 
@@ -338,7 +295,7 @@ export default function Settings() {
         {/* Oven Specific Settings (using existing component) */}
         <div
           className={`grid gap-8 ${
-            currentIsDualMode ? 'lg:grid-cols-2' : 'grid-cols-1' // Simplified layout
+            currentIsDualMode ? 'lg:grid-cols-2' : 'grid-cols-1'
           }`}
         >
             <OvenSettingsForm
