@@ -2,11 +2,10 @@
 'use client';
 
 import type {PropsWithChildren} from 'react';
-import Link from 'next/link';
-import {usePathname} from 'next/navigation';
-import {LayoutDashboard, Settings as SettingsIcon, Thermometer} from 'lucide-react';
-import Image from 'next/image';
-import {useTranslations} from 'next-intl'; // Import useTranslations
+import { Link } from 'next-intl'; // Use next-intl Link
+import { usePathname, useRouter } from 'next/navigation'; // Use next/navigation hooks
+import { useLocale, useTranslations } from 'next-intl';
+import {LayoutDashboard, Settings as SettingsIcon, Thermometer, Menu} from 'lucide-react'; // Added Menu for mobile trigger
 
 import {cn} from '@/lib/utils';
 import {
@@ -25,27 +24,48 @@ import {Button} from '@/components/ui/button';
 import Footer from './footer';
 import LocaleSwitcher from './locale-switcher'; // Import LocaleSwitcher
 
-export default function AppLayout({children}: PropsWithChildren) {
-  const pathname = usePathname();
-  const t = useTranslations('AppLayout'); // Initialize translations
 
-  // Function to check if a path is active, ignoring the locale part
-  const isActive = (path: string) => {
-     // Remove the locale part (e.g., /en, /zh-TW) if present
-     const currentPathWithoutLocale = pathname.replace(/^\/[a-z]{2}(-[A-Z]{2})?/, '');
-     // If the root path is just '/', handle it specifically
-     const adjustedPath = currentPathWithoutLocale === '' ? '/' : currentPathWithoutLocale;
-     return adjustedPath === path;
-  };
+// This is the main layout component that wraps the application content
+export default function AppLayout({children}: PropsWithChildren) {
+  return (
+    // Use SidebarProvider to manage sidebar state, default collapsed on desktop
+    <SidebarProvider defaultCollapsed={true}>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </SidebarProvider>
+  );
+}
+
+// Separated content to allow useSidebar hook within SidebarProvider context
+// This is necessary because useSidebar() needs to be called within SidebarProvider
+function AppLayoutContent({children}: PropsWithChildren) {
+    const fullPathname = usePathname(); // Use next/navigation usePathname hook
+    const router = useRouter(); // Use next/navigation router hook
+    const locale = useLocale(); // Get current locale
+    const t = useTranslations('AppLayout');
+
+    // Function to check if a path is active, ignoring the locale part
+    const isActive = (path: string) => {
+       // Remove the locale part (e.g., /en, /zh-TW) if present
+       // Use the current locale from useLocale()
+       const pathWithoutLocale = fullPathname.startsWith(`/${locale}`)
+        ? fullPathname.substring(`/${locale}`.length)
+        : fullPathname;
+
+       // Handle root path ('') or paths starting with '/'
+       const adjustedPathWithoutLocale = pathWithoutLocale === '' ? '/' : pathWithoutLocale;
+
+        // Check if the adjusted path matches the target path
+       return adjustedPathWithoutLocale === path;
+    };
 
 
   return (
-    <SidebarProvider defaultOpen>
       <div className="flex min-h-screen flex-col">
         <div className="flex flex-1">
-          <Sidebar collapsible="icon">
+           <Sidebar collapsible="icon" side="left" defaultCollapsed={true}>
             <SidebarHeader className="p-4">
-              <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary">
+               {/* Use Link from next-intl */}
+              <Link href="/" className="flex items-center gap-2 font-bold text-lg text-sidebar-primary">
                 <Thermometer className="w-6 h-6" />
                 <span className="group-data-[state=expanded]:opacity-100 group-data-[state=collapsed]:opacity-0 transition-opacity duration-200">
                   {t('title')}
@@ -60,6 +80,7 @@ export default function AppLayout({children}: PropsWithChildren) {
                     isActive={isActive('/')}
                     tooltip={t('dashboard')}
                   >
+                     {/* Use Link from next-intl */}
                     <Link href="/">
                       <LayoutDashboard />
                       <span>{t('dashboard')}</span>
@@ -72,6 +93,7 @@ export default function AppLayout({children}: PropsWithChildren) {
                     isActive={isActive('/settings')}
                     tooltip={t('settings')}
                   >
+                      {/* Use Link from next-intl */}
                     <Link href="/settings">
                       <SettingsIcon />
                       <span>{t('settings')}</span>
@@ -81,9 +103,11 @@ export default function AppLayout({children}: PropsWithChildren) {
               </SidebarMenu>
             </SidebarContent>
           </Sidebar>
-          <SidebarInset className="flex flex-1 flex-col">
+          {/* SidebarInset handles the main content area positioning relative to the sidebar */}
+           <SidebarInset className="flex flex-1 flex-col w-full overflow-x-hidden max-w-full"> {/* Ensure SidebarInset is flexible */}
              <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
                <div className="flex items-center gap-2">
+                    {/* Use SidebarTrigger for mobile toggle */}
                    <SidebarTrigger className="md:hidden"/>
                     {/* Dynamically display header based on active path */}
                     <h1 className="text-xl font-semibold hidden sm:block">
@@ -93,13 +117,25 @@ export default function AppLayout({children}: PropsWithChildren) {
                {/* Locale switcher added to the right side of the header */}
                <LocaleSwitcher />
              </header>
-            <main className="flex-grow flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+            {/* Main content area */}
+            {/* Keep main content flexible, but centered within its container */}
+             <main className="flex-grow flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 w-full"> {/* Remove max-w-full here if it limits content */}
               {children}
             </main>
-            <Footer />
+            {/* Footer remains at the bottom */}
+             <Footer />
           </SidebarInset>
         </div>
       </div>
+  );
+}
+
+
+// Wrapper component to ensure SidebarProvider is used correctly
+function AppLayoutWrapper({ children }: PropsWithChildren) {
+  return (
+    <SidebarProvider defaultCollapsed={true}>
+      <AppLayoutContent>{children}</AppLayoutContent>
     </SidebarProvider>
   );
 }
