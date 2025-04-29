@@ -1,3 +1,4 @@
+
  "use client"
 
 import * as React from "react"
@@ -17,12 +18,14 @@ import {
 interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
     date: DateRange | undefined;
     onDateChange: (date: DateRange | undefined) => void;
+    placeholderText?: string; // Add placeholderText prop
 }
 
 export default function DateRangePicker({
   className,
   date,
-  onDateChange
+  onDateChange,
+  placeholderText // Destructure placeholderText
 }: DateRangePickerProps) {
 
 
@@ -49,7 +52,8 @@ export default function DateRangePicker({
                 format(date.from, "LLL dd, y")
               )
             ) : (
-              <span>Pick a date range</span>
+              // Use placeholderText or default
+              <span>{placeholderText || "Pick a date range"}</span>
             )}
           </Button>
         </PopoverTrigger>

@@ -5,7 +5,8 @@ import type {PropsWithChildren} from 'react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {LayoutDashboard, Settings as SettingsIcon, Thermometer} from 'lucide-react';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image';
+import {useTranslations} from 'next-intl'; // Import useTranslations
 
 import {cn} from '@/lib/utils';
 import {
@@ -21,23 +22,33 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import {Button} from '@/components/ui/button';
-import Footer from './footer'; // Import the Footer component
+import Footer from './footer';
+import LocaleSwitcher from './locale-switcher'; // Import LocaleSwitcher
 
 export default function AppLayout({children}: PropsWithChildren) {
   const pathname = usePathname();
+  const t = useTranslations('AppLayout'); // Initialize translations
 
-  const isActive = (path: string) => pathname === path;
+  // Function to check if a path is active, ignoring the locale part
+  const isActive = (path: string) => {
+     // Remove the locale part (e.g., /en, /zh-TW) if present
+     const currentPathWithoutLocale = pathname.replace(/^\/[a-z]{2}(-[A-Z]{2})?/, '');
+     // If the root path is just '/', handle it specifically
+     const adjustedPath = currentPathWithoutLocale === '' ? '/' : currentPathWithoutLocale;
+     return adjustedPath === path;
+  };
+
 
   return (
     <SidebarProvider defaultOpen>
-      <div className="flex min-h-screen flex-col"> {/* Keep as flex-col */}
-        <div className="flex flex-1"> {/* Flex container for sidebar and main content + footer area */}
+      <div className="flex min-h-screen flex-col">
+        <div className="flex flex-1">
           <Sidebar collapsible="icon">
             <SidebarHeader className="p-4">
-              <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-                <Thermometer className="w-6 h-6 text-primary" />
+              <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary">
+                <Thermometer className="w-6 h-6" />
                 <span className="group-data-[state=expanded]:opacity-100 group-data-[state=collapsed]:opacity-0 transition-opacity duration-200">
-                  OvenView
+                  {t('title')}
                 </span>
               </Link>
             </SidebarHeader>
@@ -47,11 +58,11 @@ export default function AppLayout({children}: PropsWithChildren) {
                   <SidebarMenuButton
                     asChild
                     isActive={isActive('/')}
-                    tooltip="Dashboard"
+                    tooltip={t('dashboard')}
                   >
                     <Link href="/">
                       <LayoutDashboard />
-                      <span>Dashboard</span>
+                      <span>{t('dashboard')}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -59,38 +70,35 @@ export default function AppLayout({children}: PropsWithChildren) {
                   <SidebarMenuButton
                     asChild
                     isActive={isActive('/settings')}
-                    tooltip="Settings"
+                    tooltip={t('settings')}
                   >
                     <Link href="/settings">
                       <SettingsIcon />
-                      <span>Settings</span>
+                      <span>{t('settings')}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarContent>
           </Sidebar>
-          {/* SidebarInset now wraps header, main content, AND footer */}
           <SidebarInset className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
-              <div className="flex items-center gap-2">
-                  <SidebarTrigger className="md:hidden"/> {/* Mobile trigger */}
-                  <h1 className="text-xl font-semibold hidden sm:block">
-                    {pathname === '/' ? 'Dashboard' : 'Settings'}
-                  </h1>
-              </div>
-              {/* Placeholder for potential header actions */}
-              <div></div>
-            </header>
-            {/* Main content area */}
-            <main className="flex-grow flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"> {/* Changed flex-1 to flex-grow */}
+             <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
+               <div className="flex items-center gap-2">
+                   <SidebarTrigger className="md:hidden"/>
+                    {/* Dynamically display header based on active path */}
+                    <h1 className="text-xl font-semibold hidden sm:block">
+                      {isActive('/') ? t('dashboard') : isActive('/settings') ? t('settings') : t('title')}
+                    </h1>
+               </div>
+               {/* Locale switcher added to the right side of the header */}
+               <LocaleSwitcher />
+             </header>
+            <main className="flex-grow flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
               {children}
             </main>
-            {/* Footer moved inside SidebarInset */}
             <Footer />
           </SidebarInset>
         </div>
-        {/* Footer removed from here */}
       </div>
     </SidebarProvider>
   );

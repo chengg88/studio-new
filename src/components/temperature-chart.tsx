@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -19,20 +20,29 @@ interface TemperatureDataPoint {
   temperature: number | null;
 }
 
+interface TemperatureChartTranslations {
+    tooltipTemperature: string;
+    upperLimitLabel: string;
+    lowerLimitLabel: string;
+    legendLabel: string;
+}
+
 interface TemperatureChartProps {
   data: TemperatureDataPoint[];
   upperLimit?: number;
   lowerLimit?: number;
+  translations: TemperatureChartTranslations; // Add translations prop
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, translations }: any) => {
   if (active && payload && payload.length) {
     const date = new Date(label);
     const formattedDate = format(date, 'PPpp'); // Format date and time nicely
     return (
       <div className="bg-background border border-border p-2 rounded shadow-md">
         <p className="label text-sm text-muted-foreground">{`${formattedDate}`}</p>
-        <p className="intro text-base font-semibold">{`Temperature: ${payload[0].value}°C`}</p>
+        {/* Use translated label */}
+        <p className="intro text-base font-semibold">{`${translations.tooltipTemperature}: ${payload[0].value}°C`}</p>
       </div>
     );
   }
@@ -45,33 +55,27 @@ export default function TemperatureChart({
   data,
   upperLimit,
   lowerLimit,
+  translations, // Destructure translations
 }: TemperatureChartProps) {
 
   const formattedData = data.map(item => ({
     ...item,
-    // Format timestamp for XAxis display (e.g., 'MMM dd HH:mm')
-    // Recharts automatically handles Date objects well for tooltips if timestamp is passed as epoch or parsable string
     timeLabel: format(new Date(item.timestamp), 'MMM dd HH:mm'),
-    // Ensure temperature is a number for the chart
     temperature: item.temperature === null ? undefined : item.temperature
-  })).filter(item => item.temperature !== undefined); // Filter out null temperature points
+  })).filter(item => item.temperature !== undefined);
 
 
   const yDomain: [number | string, number | string] = ['auto', 'auto'];
   if (lowerLimit !== undefined) yDomain[0] = Math.min(data.reduce((min, p) => Math.min(min, p.temperature ?? Infinity), Infinity), lowerLimit) - 10;
   if (upperLimit !== undefined) yDomain[1] = Math.max(data.reduce((max, p) => Math.max(max, p.temperature ?? -Infinity), -Infinity), upperLimit) + 10;
-   // Add padding if limits aren't defined
   if (lowerLimit === undefined && data.length > 0) yDomain[0] = data.reduce((min, p) => Math.min(min, p.temperature ?? Infinity), Infinity) - 10;
   if (upperLimit === undefined && data.length > 0) yDomain[1] = data.reduce((max, p) => Math.max(max, p.temperature ?? -Infinity), -Infinity) + 10;
 
-
-   // Ensure domain minimum is not excessively low if data minimum is close to 0 or negative
     if (typeof yDomain[0] === 'number') {
-        yDomain[0] = Math.min(yDomain[0], 40); // Don't let Y axis start too far below typical lower limits
+        yDomain[0] = Math.min(yDomain[0], 40);
     }
-     // Ensure domain maximum is not excessively high if data maximum is close to 0
     if (typeof yDomain[1] === 'number') {
-        yDomain[1] = Math.max(yDomain[1], 100); // Ensure y axis goes up to at least 100
+        yDomain[1] = Math.max(yDomain[1], 100);
     }
 
 
@@ -81,22 +85,20 @@ export default function TemperatureChart({
         data={formattedData}
         margin={{
           top: 5,
-          right: 10, // Adjusted margin
-          left: -15, // Adjusted margin
+          right: 10,
+          left: -15,
           bottom: 5,
         }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
         <XAxis
-          dataKey="timestamp" // Use the original timestamp for correct time scaling
-          tickFormatter={(timestamp) => format(new Date(timestamp), 'HH:mm')} // Format tick label
+          dataKey="timestamp"
+          tickFormatter={(timestamp) => format(new Date(timestamp), 'HH:mm')}
           stroke="hsl(var(--muted-foreground))"
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          // Consider adding interval="preserveStartEnd" or dynamic interval based on data density
-           // interval={Math.max(0, Math.floor(formattedData.length / 10) -1)} // Show ~10 ticks max
-           minTickGap={30} // Minimum px gap between ticks
+           minTickGap={30}
         />
         <YAxis
           stroke="hsl(var(--muted-foreground))"
@@ -105,17 +107,18 @@ export default function TemperatureChart({
           axisLine={false}
           tickFormatter={(value) => `${value}°C`}
           domain={yDomain}
-          allowDataOverflow={true} // Prevent lines going outside plot area if limits are tight
+          allowDataOverflow={true}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--accent))', strokeWidth: 1, strokeDasharray: "3 3" }} />
+        {/* Pass translations to CustomTooltip */}
+        <Tooltip content={<CustomTooltip translations={translations} />} cursor={{ stroke: 'hsl(var(--accent))', strokeWidth: 1, strokeDasharray: "3 3" }} />
         <Legend verticalAlign="top" height={36}/>
         <Line
           type="monotone"
           dataKey="temperature"
-          stroke="hsl(var(--chart-1))" // Use primary color (blue)
+          stroke="hsl(var(--chart-1))"
           strokeWidth={2}
           dot={false}
-          name="Temperature"
+          name={translations.legendLabel} // Use translated legend label
           activeDot={{r: 6, strokeWidth: 1, fill: 'hsl(var(--primary))'}}
           isAnimationActive={true}
           animationDuration={300}
@@ -124,7 +127,8 @@ export default function TemperatureChart({
         {upperLimit !== undefined && (
           <ReferenceLine
             y={upperLimit}
-            label={{ value: `Max: ${upperLimit}°C`, position: 'insideTopRight', fill: 'hsl(var(--destructive))', fontSize: 10 }}
+             // Use translated label
+            label={{ value: translations.upperLimitLabel, position: 'insideTopRight', fill: 'hsl(var(--destructive))', fontSize: 10 }}
             stroke="hsl(var(--destructive))"
             strokeDasharray="3 3"
           />
@@ -132,7 +136,8 @@ export default function TemperatureChart({
         {lowerLimit !== undefined && (
           <ReferenceLine
             y={lowerLimit}
-            label={{ value: `Min: ${lowerLimit}°C`, position: 'insideBottomRight', fill: 'hsl(var(--primary))', fontSize: 10 }}
+            // Use translated label
+            label={{ value: translations.lowerLimitLabel, position: 'insideBottomRight', fill: 'hsl(var(--primary))', fontSize: 10 }}
             stroke="hsl(var(--primary))"
             strokeDasharray="3 3"
           />

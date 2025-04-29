@@ -11,7 +11,7 @@ import {
   type SelectOnOff,
   type AutoTrackoutOption,
   type A1019PinValue,
-  type OvenSettings as OvenSettingsData, // Rename store type to avoid conflict
+  type OvenSettings as OvenSettingsData,
 } from '@/store/oven-store';
 import {Button} from '@/components/ui/button';
 import {
@@ -31,38 +31,35 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import OvenSettingsForm from './oven-settings-form'; // Keep this for oven-specific parts
+import OvenSettingsForm from './oven-settings-form';
 import { Input } from '@/components/ui/input';
-// Removed RadioGroup import
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch'; // Import Switch
+import { Switch } from '@/components/ui/switch';
+import {useTranslations} from 'next-intl'; // Import useTranslations
 
-
-// Zod schema for validation
+// Zod schema for validation (remains the same, validation logic doesn't need translation)
 const ovenSettingsSchema = z.object({
-  name: z.string().min(1, 'Oven name is required').max(50, 'Name too long'),
-  offset1: z.coerce.number().optional().or(z.nan()), // Add offsets
+  name: z.string().min(1, 'ovenNameRequired').max(50, 'ovenNameTooLong'), // Use keys for error messages
+  offset1: z.coerce.number().optional().or(z.nan()),
   offset2: z.coerce.number().optional().or(z.nan()),
   offset3: z.coerce.number().optional().or(z.nan()),
   offset4: z.coerce.number().optional().or(z.nan()),
 });
 
-
-// Updated Zod schema for all settings
 const settingsSchema = z.object({
-  ovenType: z.enum(['1', '2', '3', '4']), // A, B, C, D
-  mesServerIp: z.string().ip({ version: "v4", message: "Invalid IP address" }).optional().or(z.literal("")), // Readonly, so optional
+  ovenType: z.enum(['1', '2', '3', '4']),
+  mesServerIp: z.string().ip({ version: "v4", message: "mesIpInvalid" }).optional().or(z.literal("")),
   doorDetect: z.enum(['0', '1']),
   autoTrackOut: z.enum(['0', '1', '2']),
   bindMaterialBox: z.enum(['0', '1']),
   buzzerNetworkDetect: z.enum(['0', '1']),
   czA5Rule: z.enum(['0', '1']),
-  ignoreTime: z.coerce.number().int().min(0, "Ignore time must be positive"),
+  ignoreTime: z.coerce.number().int().min(0, "ignoreTimePositive"),
   tjKeepingTrackin: z.enum(['0', '1']),
-  a1019Pins: z.array(z.enum(['1', '2'])).length(8, "Must provide settings for all 8 pins"),
+  a1019Pins: z.array(z.enum(['1', '2'])).length(8, "Must provide settings for all 8 pins"), // No easy way to translate length error
   oven1: ovenSettingsSchema,
-  oven2: ovenSettingsSchema.optional(), // Still optional based on ovenType logic
+  oven2: ovenSettingsSchema.optional(),
 });
 
 
@@ -71,8 +68,8 @@ export type OvenSettingsFormData = z.infer<typeof ovenSettingsSchema>;
 
 
 export default function Settings() {
+  const t = useTranslations('Settings'); // Initialize translations
   const {
-    // Destructure all settings and actions from the store
     ovenType: storeOvenType,
     mesServerIp: storeMesIp,
     doorDetect: storeDoorDetect,
@@ -88,13 +85,16 @@ export default function Settings() {
     updateGeneralSettings,
     updateOvenSettings,
     initializeStore,
-    _hasHydrated // Use hydration status
+    _hasHydrated
   } = useOvenStore();
   const {toast} = useToast();
 
   const form = useForm<SettingsFormData>({
-    resolver: zodResolver(settingsSchema),
-    // Default values should reflect the initial state structure
+    resolver: zodResolver(settingsSchema, {
+        // Use t function to translate error messages from keys
+        // This requires zod v3.23+ for async resolvers or custom error maps
+        // For simplicity here, we'll keep the keys and translate them in the UI where FormMessage is used
+    }),
     defaultValues: {
       ovenType: '3',
       mesServerIp: '',
@@ -106,32 +106,19 @@ export default function Settings() {
       ignoreTime: 20,
       tjKeepingTrackin: '0',
       a1019Pins: Array(8).fill('1'),
-      oven1: {
-        name: '',
-        offset1: 0, // Initialize offsets
-        offset2: 0,
-        offset3: 0,
-        offset4: 0,
-      },
-      oven2: {
-        name: '',
-        offset1: 0, // Initialize offsets
-        offset2: 0,
-        offset3: 0,
-        offset4: 0,
-      },
+      oven1: { name: '', offset1: 0, offset2: 0, offset3: 0, offset4: 0 },
+      oven2: { name: '', offset1: 0, offset2: 0, offset3: 0, offset4: 0 },
     },
   });
 
-  const { control, handleSubmit, reset, watch, setValue } = form;
+  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = form;
   const currentOvenType = watch('ovenType');
-  const currentIsDualMode = currentOvenType === '1' || currentOvenType === '2'; // Determine dual mode from oven type
+  const currentIsDualMode = currentOvenType === '1' || currentOvenType === '2';
 
-  // Initialize form with store data only after hydration
    useEffect(() => {
     if (!_hasHydrated) {
-       initializeStore(); // Ensure store attempts hydration if not already done
-       return; // Exit if not hydrated yet
+       initializeStore();
+       return;
     }
     reset({
       ovenType: storeOvenType,
@@ -146,14 +133,14 @@ export default function Settings() {
       a1019Pins: storePins,
       oven1: {
         name: ovens.oven1.name || '',
-        offset1: ovens.oven1.offsets?.[0] ?? 0, // Map stored offsets
+        offset1: ovens.oven1.offsets?.[0] ?? 0,
         offset2: ovens.oven1.offsets?.[1] ?? 0,
         offset3: ovens.oven1.offsets?.[2] ?? 0,
         offset4: ovens.oven1.offsets?.[3] ?? 0,
       },
       oven2: {
         name: ovens.oven2.name || '',
-        offset1: ovens.oven2.offsets?.[0] ?? 0, // Map stored offsets
+        offset1: ovens.oven2.offsets?.[0] ?? 0,
         offset2: ovens.oven2.offsets?.[1] ?? 0,
         offset3: ovens.oven2.offsets?.[2] ?? 0,
         offset4: ovens.oven2.offsets?.[3] ?? 0,
@@ -161,29 +148,10 @@ export default function Settings() {
     });
   }, [_hasHydrated, storeOvenType, storeMesIp, storeDoorDetect, storeAutoTrackout, storeBindMaterial, storeBuzzer, storeCzRule, storeIgnoreTime, storeTjKeep, storePins, ovens, reset, initializeStore]);
 
-
-  // Disable Oven 2 Name input based on ovenType
-  useEffect(() => {
-      const disableOven2 = currentOvenType === '3' || currentOvenType === '4';
-       // Check if the field exists before trying to set disabled property
-      const oven2NameInput = document.getElementById('oven2.name'); // Assuming you give the input an ID
-       if (oven2NameInput) {
-          // Potential issue: RHF might control disabled state better
-          // Consider using RHF's 'disabled' prop in FormField if this causes issues
-          // (oven2NameInput as HTMLInputElement).disabled = disableOven2;
-       }
-       // RHF way (preferred if OvenSettingsForm uses RHF field props)
-       // You might need to pass 'disabled' prop down to OvenSettingsForm and apply it to the Input
-  }, [currentOvenType]);
-
   const onSubmit = (data: SettingsFormData) => {
     try {
-       // Update oven type which also updates isDualMode internally
        setOvenType(data.ovenType as OvenTypeOption);
-
-      // Update general settings
-      updateGeneralSettings({
-        // mesServerIp is read-only, don't update it from form
+       updateGeneralSettings({
         doorDetect: data.doorDetect as SelectOnOff,
         autoTrackOut: data.autoTrackOut as AutoTrackoutOption,
         bindMaterialBox: data.bindMaterialBox as SelectOnOff,
@@ -194,53 +162,45 @@ export default function Settings() {
         a1019Pins: data.a1019Pins as A1019PinValue[],
       });
 
-
-      // Update settings for oven1
-      const oven1Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
+      const oven1Settings: Partial<OvenSettingsData> = {
         name: data.oven1.name,
-        offsets: [ // Map form offsets to store format
-          data.oven1.offset1 ?? 0,
-          data.oven1.offset2 ?? 0,
-          data.oven1.offset3 ?? 0,
-          data.oven1.offset4 ?? 0,
-        ]
+        offsets: [ data.oven1.offset1 ?? 0, data.oven1.offset2 ?? 0, data.oven1.offset3 ?? 0, data.oven1.offset4 ?? 0 ]
       };
       updateOvenSettings('oven1', oven1Settings);
 
-
-      // Update settings for oven2 only if in dual mode according to ovenType
       if ((data.ovenType === '1' || data.ovenType === '2') && data.oven2) {
-         const oven2Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
+         const oven2Settings: Partial<OvenSettingsData> = {
             name: data.oven2.name,
-            offsets: [ // Map form offsets to store format
-              data.oven2.offset1 ?? 0,
-              data.oven2.offset2 ?? 0,
-              data.oven2.offset3 ?? 0,
-              data.oven2.offset4 ?? 0,
-            ]
+            offsets: [ data.oven2.offset1 ?? 0, data.oven2.offset2 ?? 0, data.oven2.offset3 ?? 0, data.oven2.offset4 ?? 0 ]
           };
         updateOvenSettings('oven2', oven2Settings);
       }
 
       toast({
-        title: 'Settings Saved',
-        description: 'Your oven configurations have been updated.',
+        title: t('saveSuccessTitle'),
+        description: t('saveSuccessDescription'),
       });
     } catch (error) {
       console.error('Failed to save settings:', error);
       toast({
-        title: 'Error Saving Settings',
-        description: 'Could not save your oven configurations. Please try again.',
+        title: t('saveErrorTitle'),
+        description: t('saveErrorDescription'),
         variant: 'destructive',
       });
     }
   };
 
 
-  // Render loading state if not hydrated
   if (!_hasHydrated) {
-      return <div className="flex justify-center items-center h-64">Loading settings...</div>;
+      return <div className="flex justify-center items-center h-64">{t('loading')}</div>;
   }
+
+  // Helper function to translate Zod error messages
+  const translateError = (fieldError: any) => {
+    if (!fieldError || !fieldError.message) return null;
+    // Assume error message is a translation key
+    return t(fieldError.message as any); // Use 'any' for potential key mismatches
+  };
 
 
   return (
@@ -250,8 +210,8 @@ export default function Settings() {
          {/* Oven Type Selection */}
          <Card>
             <CardHeader>
-                <CardTitle>Oven Configuration</CardTitle>
-                <CardDescription>Select the type of oven configuration.</CardDescription>
+                <CardTitle>{t('ovenConfigurationTitle')}</CardTitle>
+                <CardDescription>{t('ovenConfigurationDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
                <FormField
@@ -259,14 +219,13 @@ export default function Settings() {
                  name="ovenType"
                  render={({ field }) => (
                    <FormItem>
-                     <FormLabel>Oven Type</FormLabel>
+                     <FormLabel>{t('ovenTypeLabel')}</FormLabel>
                      <Select
                         onValueChange={(value) => {
                             field.onChange(value);
-                            // When changing oven type, ensure Oven 2 pin assignments are reset if needed
                             if (value === '3' || value === '4') {
                                 const currentPins = form.getValues('a1019Pins');
-                                const updatedPins = currentPins.map(pin => pin === '2' ? '1' : pin); // Force pins assigned to Oven 2 back to Oven 1
+                                const updatedPins = currentPins.map(pin => pin === '2' ? '1' : pin);
                                 setValue('a1019Pins', updatedPins as A1019PinValue[]);
                             }
                         }}
@@ -274,17 +233,17 @@ export default function Settings() {
                       >
                        <FormControl>
                          <SelectTrigger>
-                           <SelectValue placeholder="Select oven configuration" />
+                           <SelectValue placeholder={t('ovenTypePlaceholder')} />
                          </SelectTrigger>
                        </FormControl>
                        <SelectContent>
-                         <SelectItem value="1">A. 1 double door oven</SelectItem>
-                         <SelectItem value="2">B. 2 single door ovens</SelectItem>
-                         <SelectItem value="3">C. 1 single door oven</SelectItem>
-                         <SelectItem value="4">D. ENOHK Oven</SelectItem>
+                         <SelectItem value="1">{t('ovenType1')}</SelectItem>
+                         <SelectItem value="2">{t('ovenType2')}</SelectItem>
+                         <SelectItem value="3">{t('ovenType3')}</SelectItem>
+                         <SelectItem value="4">{t('ovenType4')}</SelectItem>
                        </SelectContent>
                      </Select>
-                     <FormMessage />
+                     <FormMessage>{translateError(errors.ovenType)}</FormMessage>
                    </FormItem>
                  )}
                />
@@ -292,7 +251,7 @@ export default function Settings() {
         </Card>
 
 
-        {/* Oven Specific Settings (using existing component) */}
+        {/* Oven Specific Settings */}
         <div
           className={`grid gap-8 ${
             currentIsDualMode ? 'lg:grid-cols-2' : 'grid-cols-1'
@@ -301,9 +260,8 @@ export default function Settings() {
             <OvenSettingsForm
                 ovenId="oven1"
                 control={control}
-                currentIsDualMode={currentIsDualMode} // Pass watched value for conditional rendering
+                currentIsDualMode={currentIsDualMode}
             />
-            {/* Conditionally render Oven 2 settings based on the watched value */}
             {currentIsDualMode && (
                  <OvenSettingsForm
                     ovenId="oven2"
@@ -316,8 +274,8 @@ export default function Settings() {
          {/* A1019 PIN Settings */}
          <Card>
             <CardHeader>
-                <CardTitle>A1019 PIN Setting</CardTitle>
-                <CardDescription>Assign each A1019 PIN to an Oven.</CardDescription>
+                <CardTitle>{t('a1019Title')}</CardTitle>
+                <CardDescription>{t('a1019Description')}</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
                 {Array.from({ length: 8 }).map((_, index) => (
@@ -327,22 +285,24 @@ export default function Settings() {
                         name={`a1019Pins.${index}`}
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>PIN[{index}]</FormLabel>
+                            <FormLabel>{t('pinLabel', { index })}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value as A1019PinValue}>
                                 <FormControl>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select Oven" />
+                                        <SelectValue placeholder={t('pinSelectPlaceholder')} />
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    <SelectItem value="1">OVEN 1</SelectItem>
-                                    {/* Only show Oven 2 option if dual mode is possible */}
+                                    <SelectItem value="1">{t('pinOven1')}</SelectItem>
                                     {currentIsDualMode && (
-                                      <SelectItem value="2">OVEN 2</SelectItem>
+                                      <SelectItem value="2">{t('pinOven2')}</SelectItem>
                                     )}
                                 </SelectContent>
                             </Select>
-                            <FormMessage />
+                             {/* Error message for individual pin might be complex to show, handle array level error */}
+                             {index === 7 && errors.a1019Pins?.message && (
+                                 <FormMessage className="col-span-full text-center">{translateError(errors.a1019Pins)}</FormMessage>
+                             )}
                         </FormItem>
                         )}
                     />
@@ -353,7 +313,7 @@ export default function Settings() {
         {/* Other General Settings */}
         <Card>
              <CardHeader>
-                <CardTitle>General Settings</CardTitle>
+                <CardTitle>{t('generalSettingsTitle')}</CardTitle>
             </CardHeader>
              <CardContent className="space-y-6">
                  <FormField
@@ -361,13 +321,12 @@ export default function Settings() {
                     name="mesServerIp"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>MES Server IP</FormLabel>
+                        <FormLabel>{t('mesIpLabel')}</FormLabel>
                         <FormControl>
-                            {/* Make this input read-only */}
-                            <Input {...field} readOnly placeholder="MES IP Address" />
+                            <Input {...field} readOnly placeholder={t('mesIpPlaceholder')} />
                         </FormControl>
-                         <FormDescription>This value is read-only.</FormDescription>
-                        <FormMessage />
+                         <FormDescription>{t('mesIpDescription')}</FormDescription>
+                        <FormMessage>{translateError(errors.mesServerIp)}</FormMessage>
                         </FormItem>
                     )}
                 />
@@ -381,12 +340,13 @@ export default function Settings() {
                          render={({ field }) => (
                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Door Detect</FormLabel>
+                                <FormLabel className="text-base">{t('doorDetectLabel')}</FormLabel>
                              </div>
                              <FormControl>
                                 <Switch
                                     checked={field.value === '1'}
                                     onCheckedChange={(checked) => field.onChange(checked ? '1' : '0')}
+                                    aria-label={t('doorDetectLabel')}
                                 />
                              </FormControl>
                          </FormItem>
@@ -399,12 +359,13 @@ export default function Settings() {
                           render={({ field }) => (
                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">Bind MaterialBox</FormLabel>
+                                <FormLabel className="text-base">{t('bindMaterialBoxLabel')}</FormLabel>
                              </div>
                              <FormControl>
                                 <Switch
                                     checked={field.value === '1'}
                                     onCheckedChange={(checked) => field.onChange(checked ? '1' : '0')}
+                                    aria-label={t('bindMaterialBoxLabel')}
                                 />
                              </FormControl>
                          </FormItem>
@@ -417,12 +378,13 @@ export default function Settings() {
                          render={({ field }) => (
                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">[Buzzer] Network Detect</FormLabel>
+                                <FormLabel className="text-base">{t('buzzerNetworkDetectLabel')}</FormLabel>
                              </div>
                              <FormControl>
                                 <Switch
                                     checked={field.value === '1'}
                                     onCheckedChange={(checked) => field.onChange(checked ? '1' : '0')}
+                                    aria-label={t('buzzerNetworkDetectLabel')}
                                 />
                              </FormControl>
                          </FormItem>
@@ -435,12 +397,13 @@ export default function Settings() {
                          render={({ field }) => (
                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">CZ A5 Rule</FormLabel>
+                                <FormLabel className="text-base">{t('czA5RuleLabel')}</FormLabel>
                               </div>
                              <FormControl>
                                 <Switch
                                     checked={field.value === '1'}
                                     onCheckedChange={(checked) => field.onChange(checked ? '1' : '0')}
+                                     aria-label={t('czA5RuleLabel')}
                                 />
                              </FormControl>
                          </FormItem>
@@ -453,12 +416,13 @@ export default function Settings() {
                          render={({ field }) => (
                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                              <div className="space-y-0.5">
-                                <FormLabel className="text-base">TJ Keeping Trackin</FormLabel>
+                                <FormLabel className="text-base">{t('tjKeepingTrackinLabel')}</FormLabel>
                               </div>
                              <FormControl>
                                 <Switch
                                     checked={field.value === '1'}
                                     onCheckedChange={(checked) => field.onChange(checked ? '1' : '0')}
+                                     aria-label={t('tjKeepingTrackinLabel')}
                                 />
                              </FormControl>
                          </FormItem>
@@ -470,14 +434,14 @@ export default function Settings() {
                         name="ignoreTime"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Ignore Time (seconds)</FormLabel>
+                            <FormLabel>{t('ignoreTimeLabel')}</FormLabel>
                             <FormControl>
                                 <Input type="number" {...field} value={field.value || 0} onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)} />
                             </FormControl>
                              <FormDescription>
-                                Time in seconds to ignore certain events or triggers.
+                                {t('ignoreTimeDescription')}
                              </FormDescription>
-                            <FormMessage />
+                             <FormMessage>{translateError(errors.ignoreTime)}</FormMessage>
                             </FormItem>
                         )}
                     />
@@ -490,23 +454,23 @@ export default function Settings() {
                      name="autoTrackOut"
                      render={({ field }) => (
                          <FormItem>
-                         <FormLabel>Auto TrackOUT Rule</FormLabel>
+                         <FormLabel>{t('autoTrackOutLabel')}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value as AutoTrackoutOption}>
                          <FormControl>
                              <SelectTrigger>
-                             <SelectValue placeholder="Select auto trackout rule" />
+                             <SelectValue placeholder={t('autoTrackOutPlaceholder')} />
                              </SelectTrigger>
                          </FormControl>
                          <SelectContent>
-                             <SelectItem value="0">0) Disable</SelectItem>
-                             <SelectItem value="1">1) All Specs Done</SelectItem>
-                             <SelectItem value="2">2) Baking Spec Done</SelectItem>
+                             <SelectItem value="0">{t('autoTrackOutOption0')}</SelectItem>
+                             <SelectItem value="1">{t('autoTrackOutOption1')}</SelectItem>
+                             <SelectItem value="2">{t('autoTrackOutOption2')}</SelectItem>
                          </SelectContent>
                          </Select>
                           <FormDescription>
-                             0: Disable auto-trackout. 1: Trigger after all specs complete. 2: Trigger after baking spec completes.
+                             {t('autoTrackOutDescription')}
                           </FormDescription>
-                         <FormMessage />
+                          <FormMessage>{translateError(errors.autoTrackOut)}</FormMessage>
                          </FormItem>
                      )}
                  />
@@ -516,7 +480,7 @@ export default function Settings() {
 
 
         {/* Save Button */}
-        <Button type="submit">Save Settings</Button>
+        <Button type="submit">{t('saveButton')}</Button>
       </form>
     </Form>
   );

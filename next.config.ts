@@ -1,4 +1,8 @@
+
 import type {NextConfig} from 'next';
+import createNextIntlPlugin from 'next-intl/plugin'; // Import the plugin
+
+const withNextIntl = createNextIntlPlugin(); // Initialize the plugin
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -16,8 +20,14 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+       {
+        protocol: 'https',
+        hostname: 'via.placeholder.com', // Add placeholder.com hostname
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig); // Wrap the config with the plugin
