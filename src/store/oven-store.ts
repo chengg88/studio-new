@@ -101,10 +101,12 @@ export const useOvenStore = create<OvenStoreState>()(
        updateOvenData: (ovenId, data) =>
         set((state) => {
           const currentOven = state.ovens[ovenId];
+           // Ensure current historical data is an array before spreading
+          const currentHistoricalData = Array.isArray(currentOven.historicalData) ? currentOven.historicalData : [];
            // Append new historical data if provided, keep existing otherwise
           const newHistoricalData = data.historicalData
-                ? [...currentOven.historicalData, ...data.historicalData] // Naive append, consider limiting size
-                : currentOven.historicalData;
+                ? [...currentHistoricalData, ...data.historicalData] // Naive append
+                : currentHistoricalData;
 
            // Simple approach: Keep last N points (e.g., 1000)
             const maxHistory = 1000;
@@ -121,7 +123,7 @@ export const useOvenStore = create<OvenStoreState>()(
                 activeProgram: data.activeProgram !== undefined ? data.activeProgram : currentOven.activeProgram,
                 state: data.state !== undefined ? data.state : currentOven.state,
                 alerts: data.alerts !== undefined ? data.alerts : currentOven.alerts,
-                historicalData: data.historicalData ? limitedHistoricalData : currentOven.historicalData, // Use the limited data
+                historicalData: data.historicalData ? limitedHistoricalData : currentHistoricalData, // Use the potentially limited data
               },
             },
           };
@@ -156,7 +158,17 @@ export const useOvenStore = create<OvenStoreState>()(
         }
       }),
         onRehydrateStorage: () => (state) => {
-            if (state) state.setHasHydrated(true)
+            if (state) {
+                 // Ensure historicalData is initialized as an array after rehydration
+                 const currentOvens = state.ovens;
+                 if (!Array.isArray(currentOvens.oven1.historicalData)) {
+                    currentOvens.oven1.historicalData = [];
+                 }
+                  if (!Array.isArray(currentOvens.oven2.historicalData)) {
+                    currentOvens.oven2.historicalData = [];
+                 }
+                state.setHasHydrated(true);
+            }
         },
     }
   )
