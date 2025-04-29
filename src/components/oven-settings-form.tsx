@@ -3,7 +3,6 @@
 
 import React from 'react';
 import type { Control } from 'react-hook-form';
-// import { useFieldArray } from 'react-hook-form'; // Removed useFieldArray
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -21,42 +20,19 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-// import { Trash2 } from 'lucide-react'; // Removed Trash2 import
-// import { Button } from '@/components/ui/button'; // Removed Button import if only used for calibration
 import type { SettingsFormData } from './settings';
-// import type { useToast } from '@/hooks/use-toast'; // Removed useToast if only used for calibration
 
 interface OvenSettingsFormProps {
   ovenId: 'oven1' | 'oven2';
   control: Control<SettingsFormData>; // Pass control from the parent form
   currentIsDualMode: boolean;
-  // toast: ReturnType<typeof useToast>['toast']; // Removed toast prop if only used for calibration
 }
 
 export default function OvenSettingsForm({
   ovenId,
   control,
   currentIsDualMode,
-  // toast, // Removed toast prop
 }: OvenSettingsFormProps) {
-  // useFieldArray is removed as calibration is removed
-  // const { fields, append, remove } = useFieldArray({
-  //   control,
-  //   name: `${ovenId}.calibrationPoints`,
-  // });
-
-  // Removed handleAddPoint function
-  // const handleAddPoint = () => {
-  //   if (fields.length < 4) {
-  //     append({ setpoint: 0, actual: 0 });
-  //   } else {
-  //     toast({
-  //       title: 'Calibration Limit Reached',
-  //       description: 'You can only add up to 4 calibration points.',
-  //       variant: 'destructive',
-  //     });
-  //   }
-  // };
 
   const isOven2Disabled = !currentIsDualMode && ovenId === 'oven2';
 
@@ -90,8 +66,8 @@ export default function OvenSettingsForm({
           )}
         />
 
-        {/* Temperature Setpoint - Keep as before */}
-        <FormField
+        {/* Temperature Setpoint - Removed */}
+        {/* <FormField
           control={control}
           name={`${ovenId}.temperatureSetpoint`}
           render={({ field }) => (
@@ -103,10 +79,10 @@ export default function OvenSettingsForm({
               <FormMessage />
             </FormItem>
           )}
-        />
+        /> */}
 
-        {/* Program Schedule - Keep as before */}
-        <FormField
+        {/* Program Schedule - Removed */}
+        {/* <FormField
           control={control}
           name={`${ovenId}.programSchedule`}
           render={({ field }) => (
@@ -122,7 +98,7 @@ export default function OvenSettingsForm({
               <FormMessage />
             </FormItem>
           )}
-        />
+        /> */}
 
          {/* Temperature Offsets */}
          <Separator />
@@ -147,78 +123,7 @@ export default function OvenSettingsForm({
              ))}
            </div>
          </div>
-
-        {/* Temperature Calibration - Removed */}
-        {/* <Separator />
-        <div>
-          <h4 className="text-md font-semibold mb-2">
-            Temperature Calibration
-          </h4>
-          <p className="text-sm text-muted-foreground mb-4">
-            Add up to four points for calibration. Enter the temperature you set
-            (Setpoint) and the actual measured temperature (Actual).
-          </p>
-          {fields.map((field, index) => (
-            <div key={field.id} className="flex items-end gap-2 mb-2">
-              <FormField
-                control={control}
-                name={`${ovenId}.calibrationPoints.${index}.setpoint`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel className="sr-only">
-                      Setpoint {index + 1}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="Setpoint °C"
-                        {...field}
-                        disabled={isOven2Disabled}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={control}
-                name={`${ovenId}.calibrationPoints.${index}.actual`}
-                render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel className="sr-only">
-                      Actual {index + 1}
-                    </FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="Actual °C" {...field} disabled={isOven2Disabled} />
-                    </FormControl>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                onClick={() => remove(index)}
-                aria-label="Remove calibration point"
-                disabled={isOven2Disabled}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleAddPoint}
-            disabled={fields.length >= 4 || isOven2Disabled}
-          >
-            Add Calibration Point
-          </Button>
-        </div> */}
       </CardContent>
     </Card>
   );
 }
-

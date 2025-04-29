@@ -8,27 +8,20 @@ export type SelectOnOff = '0' | '1'; // 0: Disable, 1: Enable
 export type AutoTrackoutOption = '0' | '1' | '2';
 export type A1019PinValue = '1' | '2'; // Represents Oven 1 or Oven 2
 
-// Removed CalibrationPoint interface
-// export interface CalibrationPoint {
-//   setpoint: number;
-//   actual: number;
-// }
-
 export interface HistoricalDataPoint {
     timestamp: string; // ISO string
     temperature: number | null;
 }
 
-export interface OvenSettings { // Renamed from OvenData to avoid conflict in Settings.tsx
+export interface OvenSettings {
   name: string;
   temperature: number | null; // Current temperature
   humidity: number | null;    // Current humidity
   activeProgram: string | null;
   state: OvenState;
   alerts: string[];
-  temperatureSetpoint: number | null;
-  programSchedule: string; // Cron expression or empty
-  // calibrationPoints: CalibrationPoint[]; // Removed calibrationPoints
+  // temperatureSetpoint: number | null; // Removed
+  // programSchedule: string; // Removed
   offsets: number[]; // Array of 4 offset values
   historicalData: HistoricalDataPoint[]; // Store historical data here
 }
@@ -50,8 +43,8 @@ interface OvenStoreState {
   a1019Pins: A1019PinValue[]; // Array of 8 values ('1' or '2')
 
   ovens: {
-    oven1: OvenSettings; // Use renamed type
-    oven2: OvenSettings; // Use renamed type
+    oven1: OvenSettings;
+    oven2: OvenSettings;
   };
 
   // Actions
@@ -69,28 +62,27 @@ interface OvenStoreState {
   }>) => void;
   updateOvenSettings: (
     ovenId: 'oven1' | 'oven2',
-    // Removed calibrationPoints from the pick
-    settings: Partial<Pick<OvenSettings, 'name' | 'temperatureSetpoint' | 'programSchedule' | 'offsets' >>
+    // Removed temperatureSetpoint and programSchedule from the pick
+    settings: Partial<Pick<OvenSettings, 'name' | 'offsets' >>
   ) => void;
   updateOvenData: (
     ovenId: 'oven1' | 'oven2',
-    data: Partial<OvenSettings> // Use renamed type
+    data: Partial<OvenSettings>
    ) => void;
    initializeStore: () => void; // Action to trigger initialization/rehydration
    _hasHydrated: boolean; // Internal flag for hydration status
    setHasHydrated: (state: boolean) => void; // Action to set hydration status
 }
 
-const initialOvenState: OvenSettings = { // Use renamed type
+const initialOvenState: OvenSettings = {
   name: '',
   temperature: null,
   humidity: null,
   activeProgram: null,
   state: 'Idle',
   alerts: [],
-  temperatureSetpoint: 100, // Default setpoint
-  programSchedule: '',
-  // calibrationPoints: [], // Removed calibrationPoints
+  // temperatureSetpoint: 100, // Removed
+  // programSchedule: '', // Removed
   offsets: [0, 0, 0, 0], // Initialize offsets array
   historicalData: [],
 };
@@ -142,9 +134,8 @@ export const useOvenStore = create<OvenStoreState>()(
             [ovenId]: {
               ...state.ovens[ovenId],
               name: settings.name ?? state.ovens[ovenId].name,
-              temperatureSetpoint: settings.temperatureSetpoint ?? state.ovens[ovenId].temperatureSetpoint,
-              programSchedule: settings.programSchedule ?? state.ovens[ovenId].programSchedule,
-              // calibrationPoints: settings.calibrationPoints ?? state.ovens[ovenId].calibrationPoints, // Removed calibrationPoints update
+              // temperatureSetpoint: settings.temperatureSetpoint ?? state.ovens[ovenId].temperatureSetpoint, // Removed
+              // programSchedule: settings.programSchedule ?? state.ovens[ovenId].programSchedule, // Removed
               offsets: settings.offsets ?? state.ovens[ovenId].offsets, // Update offsets
             },
           },
@@ -200,16 +191,14 @@ export const useOvenStore = create<OvenStoreState>()(
         ovens: {
             oven1: {
                 name: state.ovens.oven1.name,
-                temperatureSetpoint: state.ovens.oven1.temperatureSetpoint,
-                programSchedule: state.ovens.oven1.programSchedule,
-                // calibrationPoints: state.ovens.oven1.calibrationPoints, // Removed from persistence
+                // temperatureSetpoint: state.ovens.oven1.temperatureSetpoint, // Removed
+                // programSchedule: state.ovens.oven1.programSchedule, // Removed
                 offsets: state.ovens.oven1.offsets, // Persist offsets
             },
             oven2: {
                 name: state.ovens.oven2.name,
-                temperatureSetpoint: state.ovens.oven2.temperatureSetpoint,
-                programSchedule: state.ovens.oven2.programSchedule,
-                // calibrationPoints: state.ovens.oven2.calibrationPoints, // Removed from persistence
+                // temperatureSetpoint: state.ovens.oven2.temperatureSetpoint, // Removed
+                // programSchedule: state.ovens.oven2.programSchedule, // Removed
                 offsets: state.ovens.oven2.offsets, // Persist offsets
             }
         }

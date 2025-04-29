@@ -7,7 +7,6 @@ import {zodResolver} from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
   useOvenStore,
-  // type CalibrationPoint, // Removed CalibrationPoint import
   type OvenTypeOption,
   type SelectOnOff,
   type AutoTrackoutOption,
@@ -41,25 +40,16 @@ import { Switch } from '@/components/ui/switch'; // Import Switch
 
 
 // Zod schema for validation
-// const calibrationPointSchema = z.object({ // Removed calibrationPointSchema
-//   setpoint: z.coerce.number().min(-50, "Setpoint must be at least -50").max(350, "Setpoint must be at most 350"),
-//   actual: z.coerce.number().min(-50, "Actual must be at least -50").max(350, "Actual must be at most 350"),
-// });
-
 const ovenSettingsSchema = z.object({
   name: z.string().min(1, 'Oven name is required').max(50, 'Name too long'),
-  temperatureSetpoint: z.coerce
-    .number()
-    .min(0, 'Setpoint must be positive')
-    .max(300, 'Setpoint cannot exceed 300°C')
-    .optional() // Make optional if needed based on context
-    .or(z.literal(0)) // Allow 0 explicitly if needed
-    .or(z.nan()), // Allow NaN if input can be empty/invalid number before validation
-  programSchedule: z.string().optional(), // Basic validation for now
-  // calibrationPoints: z // Removed calibrationPoints validation
-  //   .array(calibrationPointSchema)
-  //   .max(4, 'Maximum of 4 calibration points')
-  //   .optional(),
+  // temperatureSetpoint: z.coerce // Removed
+  //   .number()
+  //   .min(0, 'Setpoint must be positive')
+  //   .max(300, 'Setpoint cannot exceed 300°C')
+  //   .optional()
+  //   .or(z.literal(0))
+  //   .or(z.nan()),
+  // programSchedule: z.string().optional(), // Removed
   offset1: z.coerce.number().optional().or(z.nan()), // Add offsets
   offset2: z.coerce.number().optional().or(z.nan()),
   offset3: z.coerce.number().optional().or(z.nan()),
@@ -85,7 +75,7 @@ const settingsSchema = z.object({
 
 
 export type SettingsFormData = z.infer<typeof settingsSchema>;
-export type OvenSettingsFormData = z.infer<typeof ovenSettingsSchema>; // This type no longer includes calibrationPoints
+export type OvenSettingsFormData = z.infer<typeof ovenSettingsSchema>;
 
 
 export default function Settings() {
@@ -126,9 +116,8 @@ export default function Settings() {
       a1019Pins: Array(8).fill('1'),
       oven1: {
         name: '',
-        temperatureSetpoint: 100,
-        programSchedule: '',
-        // calibrationPoints: [], // Removed calibrationPoints default
+        // temperatureSetpoint: 100, // Removed
+        // programSchedule: '', // Removed
         offset1: 0, // Initialize offsets
         offset2: 0,
         offset3: 0,
@@ -136,9 +125,8 @@ export default function Settings() {
       },
       oven2: {
         name: '',
-        temperatureSetpoint: 100,
-        programSchedule: '',
-        // calibrationPoints: [], // Removed calibrationPoints default
+        // temperatureSetpoint: 100, // Removed
+        // programSchedule: '', // Removed
         offset1: 0, // Initialize offsets
         offset2: 0,
         offset3: 0,
@@ -170,9 +158,8 @@ export default function Settings() {
       a1019Pins: storePins,
       oven1: {
         name: ovens.oven1.name || '',
-        temperatureSetpoint: ovens.oven1.temperatureSetpoint ?? 100,
-        programSchedule: ovens.oven1.programSchedule || '',
-        // calibrationPoints: ovens.oven1.calibrationPoints || [], // Removed calibrationPoints reset
+        // temperatureSetpoint: ovens.oven1.temperatureSetpoint ?? 100, // Removed
+        // programSchedule: ovens.oven1.programSchedule || '', // Removed
         offset1: ovens.oven1.offsets?.[0] ?? 0, // Map stored offsets
         offset2: ovens.oven1.offsets?.[1] ?? 0,
         offset3: ovens.oven1.offsets?.[2] ?? 0,
@@ -180,9 +167,8 @@ export default function Settings() {
       },
       oven2: {
         name: ovens.oven2.name || '',
-        temperatureSetpoint: ovens.oven2.temperatureSetpoint ?? 100,
-        programSchedule: ovens.oven2.programSchedule || '',
-        // calibrationPoints: ovens.oven2.calibrationPoints || [], // Removed calibrationPoints reset
+        // temperatureSetpoint: ovens.oven2.temperatureSetpoint ?? 100, // Removed
+        // programSchedule: ovens.oven2.programSchedule || '', // Removed
         offset1: ovens.oven2.offsets?.[0] ?? 0, // Map stored offsets
         offset2: ovens.oven2.offsets?.[1] ?? 0,
         offset3: ovens.oven2.offsets?.[2] ?? 0,
@@ -228,9 +214,8 @@ export default function Settings() {
       // Update settings for oven1
       const oven1Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
         name: data.oven1.name,
-        temperatureSetpoint: data.oven1.temperatureSetpoint,
-        programSchedule: data.oven1.programSchedule,
-        // calibrationPoints are no longer part of the form or schema
+        // temperatureSetpoint: data.oven1.temperatureSetpoint, // Removed
+        // programSchedule: data.oven1.programSchedule, // Removed
         offsets: [ // Map form offsets to store format
           data.oven1.offset1 ?? 0,
           data.oven1.offset2 ?? 0,
@@ -245,9 +230,8 @@ export default function Settings() {
       if ((data.ovenType === '1' || data.ovenType === '2') && data.oven2) {
          const oven2Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
             name: data.oven2.name,
-            temperatureSetpoint: data.oven2.temperatureSetpoint,
-            programSchedule: data.oven2.programSchedule,
-            // calibrationPoints are no longer part of the form or schema
+            // temperatureSetpoint: data.oven2.temperatureSetpoint, // Removed
+            // programSchedule: data.oven2.programSchedule, // Removed
             offsets: [ // Map form offsets to store format
               data.oven2.offset1 ?? 0,
               data.oven2.offset2 ?? 0,
@@ -297,7 +281,15 @@ export default function Settings() {
                     <FormItem className="space-y-3">
                     <FormControl>
                         <RadioGroup
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // When changing oven type, ensure Oven 2 pin assignments are reset if needed
+                          if (value === '3' || value === '4') {
+                              const currentPins = form.getValues('a1019Pins');
+                              const updatedPins = currentPins.map(pin => pin === '2' ? '1' : pin); // Force pins assigned to Oven 2 back to Oven 1
+                              setValue('a1019Pins', updatedPins as A1019PinValue[]);
+                          }
+                         }}
                         value={field.value}
                         className="flex flex-col space-y-1"
                         >
@@ -353,8 +345,6 @@ export default function Settings() {
                 ovenId="oven1"
                 control={control}
                 currentIsDualMode={currentIsDualMode} // Pass watched value for conditional rendering
-                // toast={toast} // toast no longer needed here
-                // Pass disabled state if needed for Oven 2 name based on currentOvenType
             />
             {/* Conditionally render Oven 2 settings based on the watched value */}
             {currentIsDualMode && (
@@ -362,7 +352,6 @@ export default function Settings() {
                     ovenId="oven2"
                     control={control}
                     currentIsDualMode={currentIsDualMode}
-                    // toast={toast} // toast no longer needed here
                  />
             )}
         </div>
@@ -391,7 +380,7 @@ export default function Settings() {
                                 <SelectContent>
                                     <SelectItem value="1">OVEN 1</SelectItem>
                                     {/* Only show Oven 2 option if dual mode is possible */}
-                                    {(form.watch('ovenType') === '1' || form.watch('ovenType') === '2') && (
+                                    {currentIsDualMode && (
                                       <SelectItem value="2">OVEN 2</SelectItem>
                                     )}
                                 </SelectContent>
