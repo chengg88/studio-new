@@ -1,13 +1,11 @@
 'use client';
 
 import React, {useEffect} from 'react';
-import {useForm, Controller, useFieldArray} from 'react-hook-form';
+import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {useOvenStore, type CalibrationPoint} from '@/store/oven-store';
 import {Button} from '@/components/ui/button';
-import {Input} from '@/components/ui/input';
-import {Label} from '@/components/ui/label';
 import {Switch} from '@/components/ui/switch';
 import {
   Card,
@@ -16,9 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {Separator} from '@/components/ui/separator';
 import {useToast} from '@/hooks/use-toast';
-import {Trash2} from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -26,8 +22,8 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from '@/components/ui/form';
+import OvenSettingsForm from './oven-settings-form'; // Import the new component
 
 // Zod schema for validation
 const calibrationPointSchema = z.object({
@@ -54,7 +50,9 @@ const settingsSchema = z.object({
   oven2: ovenSettingsSchema.optional(), // Optional if not dual mode
 });
 
-type SettingsFormData = z.infer<typeof settingsSchema>;
+export type SettingsFormData = z.infer<typeof settingsSchema>;
+export type OvenSettingsFormData = z.infer<typeof ovenSettingsSchema>;
+
 
 export default function Settings() {
   const {
@@ -113,7 +111,14 @@ export default function Settings() {
     setDualMode(currentIsDualMode);
      // When switching from dual to single, ensure oven2 data isn't accidentally saved if form isn't submitted
      if (!currentIsDualMode) {
-       setValue('oven2', ovens.oven2); // Reset oven2 form data to stored state or defaults
+       // Reset oven2 form data to stored state or defaults when switching off dual mode
+       // This prevents stale form data from being unintentionally saved later
+       setValue('oven2', {
+           name: ovens.oven2.name || '',
+           temperatureSetpoint: ovens.oven2.temperatureSetpoint ?? 100,
+           programSchedule: ovens.oven2.programSchedule || '',
+           calibrationPoints: ovens.oven2.calibrationPoints || [],
+       });
      }
    }, [currentIsDualMode, setDualMode, setValue, ovens.oven2]);
 
@@ -121,12 +126,12 @@ export default function Settings() {
   const onSubmit = (data: SettingsFormData) => {
     try {
       updateOvenSettings('oven1', data.oven1);
+      // Only update oven2 settings if in dual mode and oven2 data exists
       if (data.isDualMode && data.oven2) {
         updateOvenSettings('oven2', data.oven2);
-      } else if (!data.isDualMode) {
-         // Optionally clear oven2 settings in store when switching to single mode
-         // updateOvenSettings('oven2', { name: '', temperatureSetpoint: null, programSchedule: '', calibrationPoints: [] });
       }
+      // No need to explicitly clear oven2 settings here,
+      // the `partialize` function in the store handles what gets persisted.
       setDualMode(data.isDualMode);
       toast({
         title: 'Settings Saved',
@@ -142,140 +147,6 @@ export default function Settings() {
     }
   };
 
-  const renderOvenSettingsForm = (ovenId: 'oven1' | 'oven2') => {
-     const { fields, append, remove } = useFieldArray({
-            control,
-            name: `${ovenId}.calibrationPoints`
-        });
-
-        const handleAddPoint = () => {
-            if (fields.length < 4) {
-                append({ setpoint: 0, actual: 0 });
-            } else {
-                 toast({
-                    title: 'Calibration Limit Reached',
-                    description: 'You can only add up to 4 calibration points.',
-                    variant: 'destructive'
-                 })
-            }
-        };
-
-    return (
-      <Card key={ovenId}>
-        <CardHeader>
-          <CardTitle>
-            {currentIsDualMode
-              ? ovenId === 'oven1'
-                ? 'Oven 1 Settings'
-                : 'Oven 2 Settings'
-              : 'Oven Settings'}
-          </CardTitle>
-          <CardDescription>
-            Configure the parameters for{' '}
-            {currentIsDualMode ? `oven ${ovenId.slice(-1)}` : 'your oven'}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <FormField
-            control={control}
-            name={`${ovenId}.name`}
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>Oven Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., Main Bake Oven" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name={`${ovenId}.temperatureSetpoint`}
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>Temperature Setpoint (°C)</FormLabel>
-                <FormControl>
-                  <Input type="number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name={`${ovenId}.programSchedule`}
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>Program Schedule (Cron Expression)</FormLabel>
-                <FormControl>
-                  <Input placeholder="e.g., 0 8 * * 1-5" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Enter a cron expression to schedule programs. Leave blank for
-                  manual operation.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <Separator />
-
-          <div>
-            <h4 className="text-md font-semibold mb-2">Temperature Calibration</h4>
-             <p className="text-sm text-muted-foreground mb-4">
-                Add up to four points for calibration. Enter the temperature you set (Setpoint) and the actual measured temperature (Actual).
-             </p>
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex items-end gap-2 mb-2">
-                <FormField
-                  control={control}
-                  name={`${ovenId}.calibrationPoints.${index}.setpoint`}
-                  render={({field}) => (
-                    <FormItem className="flex-1">
-                      <FormLabel className="sr-only">Setpoint {index + 1}</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Setpoint °C" {...field} />
-                      </FormControl>
-                       <FormMessage className="text-xs"/>
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={control}
-                  name={`${ovenId}.calibrationPoints.${index}.actual`}
-                  render={({field}) => (
-                    <FormItem className="flex-1">
-                       <FormLabel className="sr-only">Actual {index + 1}</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="Actual °C" {...field} />
-                      </FormControl>
-                      <FormMessage className="text-xs"/>
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => remove(index)}
-                  aria-label="Remove calibration point"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-             <Button type="button" variant="outline" size="sm" onClick={handleAddPoint} disabled={fields.length >= 4}>
-                 Add Calibration Point
-             </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
   return (
     <Form {...form}>
@@ -313,8 +184,20 @@ export default function Settings() {
             currentIsDualMode ? 'lg:grid-cols-2' : 'lg:grid-cols-1'
           }`}
         >
-          {renderOvenSettingsForm('oven1')}
-          {currentIsDualMode && renderOvenSettingsForm('oven2')}
+            <OvenSettingsForm
+                ovenId="oven1"
+                control={control}
+                currentIsDualMode={currentIsDualMode}
+                toast={toast}
+            />
+            {currentIsDualMode && (
+                 <OvenSettingsForm
+                    ovenId="oven2"
+                    control={control}
+                    currentIsDualMode={currentIsDualMode}
+                    toast={toast}
+                />
+            )}
         </div>
 
         <Button type="submit">Save Settings</Button>
