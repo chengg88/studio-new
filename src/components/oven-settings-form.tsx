@@ -3,8 +3,7 @@
 
 import React from 'react';
 import type { Control } from 'react-hook-form';
-import { useFieldArray } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
+// import { useFieldArray } from 'react-hook-form'; // Removed useFieldArray
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -22,40 +21,42 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Trash2 } from 'lucide-react';
+// import { Trash2 } from 'lucide-react'; // Removed Trash2 import
+// import { Button } from '@/components/ui/button'; // Removed Button import if only used for calibration
 import type { SettingsFormData } from './settings';
-import type { useToast } from '@/hooks/use-toast';
+// import type { useToast } from '@/hooks/use-toast'; // Removed useToast if only used for calibration
 
 interface OvenSettingsFormProps {
   ovenId: 'oven1' | 'oven2';
   control: Control<SettingsFormData>; // Pass control from the parent form
   currentIsDualMode: boolean;
-  toast: ReturnType<typeof useToast>['toast']; // Pass toast function
+  // toast: ReturnType<typeof useToast>['toast']; // Removed toast prop if only used for calibration
 }
 
 export default function OvenSettingsForm({
   ovenId,
   control,
   currentIsDualMode,
-  toast,
+  // toast, // Removed toast prop
 }: OvenSettingsFormProps) {
-  // useFieldArray is now called unconditionally within this component instance
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `${ovenId}.calibrationPoints`,
-  });
+  // useFieldArray is removed as calibration is removed
+  // const { fields, append, remove } = useFieldArray({
+  //   control,
+  //   name: `${ovenId}.calibrationPoints`,
+  // });
 
-  const handleAddPoint = () => {
-    if (fields.length < 4) {
-      append({ setpoint: 0, actual: 0 });
-    } else {
-      toast({
-        title: 'Calibration Limit Reached',
-        description: 'You can only add up to 4 calibration points.',
-        variant: 'destructive',
-      });
-    }
-  };
+  // Removed handleAddPoint function
+  // const handleAddPoint = () => {
+  //   if (fields.length < 4) {
+  //     append({ setpoint: 0, actual: 0 });
+  //   } else {
+  //     toast({
+  //       title: 'Calibration Limit Reached',
+  //       description: 'You can only add up to 4 calibration points.',
+  //       variant: 'destructive',
+  //     });
+  //   }
+  // };
 
   const isOven2Disabled = !currentIsDualMode && ovenId === 'oven2';
 
@@ -137,7 +138,7 @@ export default function OvenSettingsForm({
                    <FormItem>
                      <FormLabel>Offset {index}</FormLabel>
                      <FormControl>
-                       <Input type="number" placeholder="Offset °C" {...field} disabled={isOven2Disabled} />
+                       <Input type="number" placeholder="Offset °C" {...field} value={field.value || 0} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} disabled={isOven2Disabled} />
                      </FormControl>
                      <FormMessage className="text-xs" />
                    </FormItem>
@@ -147,8 +148,8 @@ export default function OvenSettingsForm({
            </div>
          </div>
 
-        {/* Temperature Calibration - Keep as before */}
-        <Separator />
+        {/* Temperature Calibration - Removed */}
+        {/* <Separator />
         <div>
           <h4 className="text-md font-semibold mb-2">
             Temperature Calibration
@@ -215,8 +216,9 @@ export default function OvenSettingsForm({
           >
             Add Calibration Point
           </Button>
-        </div>
+        </div> */}
       </CardContent>
     </Card>
   );
 }
+

@@ -7,11 +7,12 @@ import {zodResolver} from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
   useOvenStore,
-  type CalibrationPoint,
+  // type CalibrationPoint, // Removed CalibrationPoint import
   type OvenTypeOption,
   type SelectOnOff,
   type AutoTrackoutOption,
-  type A1019PinValue
+  type A1019PinValue,
+  type OvenSettings as OvenSettingsData, // Rename store type to avoid conflict
 } from '@/store/oven-store';
 import {Button} from '@/components/ui/button';
 import {
@@ -40,10 +41,10 @@ import { Switch } from '@/components/ui/switch'; // Import Switch
 
 
 // Zod schema for validation
-const calibrationPointSchema = z.object({
-  setpoint: z.coerce.number().min(-50, "Setpoint must be at least -50").max(350, "Setpoint must be at most 350"),
-  actual: z.coerce.number().min(-50, "Actual must be at least -50").max(350, "Actual must be at most 350"),
-});
+// const calibrationPointSchema = z.object({ // Removed calibrationPointSchema
+//   setpoint: z.coerce.number().min(-50, "Setpoint must be at least -50").max(350, "Setpoint must be at most 350"),
+//   actual: z.coerce.number().min(-50, "Actual must be at least -50").max(350, "Actual must be at most 350"),
+// });
 
 const ovenSettingsSchema = z.object({
   name: z.string().min(1, 'Oven name is required').max(50, 'Name too long'),
@@ -55,10 +56,10 @@ const ovenSettingsSchema = z.object({
     .or(z.literal(0)) // Allow 0 explicitly if needed
     .or(z.nan()), // Allow NaN if input can be empty/invalid number before validation
   programSchedule: z.string().optional(), // Basic validation for now
-  calibrationPoints: z
-    .array(calibrationPointSchema)
-    .max(4, 'Maximum of 4 calibration points')
-    .optional(),
+  // calibrationPoints: z // Removed calibrationPoints validation
+  //   .array(calibrationPointSchema)
+  //   .max(4, 'Maximum of 4 calibration points')
+  //   .optional(),
   offset1: z.coerce.number().optional().or(z.nan()), // Add offsets
   offset2: z.coerce.number().optional().or(z.nan()),
   offset3: z.coerce.number().optional().or(z.nan()),
@@ -84,7 +85,7 @@ const settingsSchema = z.object({
 
 
 export type SettingsFormData = z.infer<typeof settingsSchema>;
-export type OvenSettingsFormData = z.infer<typeof ovenSettingsSchema>;
+export type OvenSettingsFormData = z.infer<typeof ovenSettingsSchema>; // This type no longer includes calibrationPoints
 
 
 export default function Settings() {
@@ -127,7 +128,7 @@ export default function Settings() {
         name: '',
         temperatureSetpoint: 100,
         programSchedule: '',
-        calibrationPoints: [],
+        // calibrationPoints: [], // Removed calibrationPoints default
         offset1: 0, // Initialize offsets
         offset2: 0,
         offset3: 0,
@@ -137,7 +138,7 @@ export default function Settings() {
         name: '',
         temperatureSetpoint: 100,
         programSchedule: '',
-        calibrationPoints: [],
+        // calibrationPoints: [], // Removed calibrationPoints default
         offset1: 0, // Initialize offsets
         offset2: 0,
         offset3: 0,
@@ -171,7 +172,7 @@ export default function Settings() {
         name: ovens.oven1.name || '',
         temperatureSetpoint: ovens.oven1.temperatureSetpoint ?? 100,
         programSchedule: ovens.oven1.programSchedule || '',
-        calibrationPoints: ovens.oven1.calibrationPoints || [],
+        // calibrationPoints: ovens.oven1.calibrationPoints || [], // Removed calibrationPoints reset
         offset1: ovens.oven1.offsets?.[0] ?? 0, // Map stored offsets
         offset2: ovens.oven1.offsets?.[1] ?? 0,
         offset3: ovens.oven1.offsets?.[2] ?? 0,
@@ -181,7 +182,7 @@ export default function Settings() {
         name: ovens.oven2.name || '',
         temperatureSetpoint: ovens.oven2.temperatureSetpoint ?? 100,
         programSchedule: ovens.oven2.programSchedule || '',
-        calibrationPoints: ovens.oven2.calibrationPoints || [],
+        // calibrationPoints: ovens.oven2.calibrationPoints || [], // Removed calibrationPoints reset
         offset1: ovens.oven2.offsets?.[0] ?? 0, // Map stored offsets
         offset2: ovens.oven2.offsets?.[1] ?? 0,
         offset3: ovens.oven2.offsets?.[2] ?? 0,
@@ -225,33 +226,36 @@ export default function Settings() {
 
 
       // Update settings for oven1
-      updateOvenSettings('oven1', {
+      const oven1Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
         name: data.oven1.name,
         temperatureSetpoint: data.oven1.temperatureSetpoint,
         programSchedule: data.oven1.programSchedule,
-        calibrationPoints: data.oven1.calibrationPoints,
+        // calibrationPoints are no longer part of the form or schema
         offsets: [ // Map form offsets to store format
           data.oven1.offset1 ?? 0,
           data.oven1.offset2 ?? 0,
           data.oven1.offset3 ?? 0,
           data.oven1.offset4 ?? 0,
         ]
-      });
+      };
+      updateOvenSettings('oven1', oven1Settings);
+
 
       // Update settings for oven2 only if in dual mode according to ovenType
       if ((data.ovenType === '1' || data.ovenType === '2') && data.oven2) {
-        updateOvenSettings('oven2', {
+         const oven2Settings: Partial<OvenSettingsData> = { // Use Partial<OvenSettingsData> from store
             name: data.oven2.name,
             temperatureSetpoint: data.oven2.temperatureSetpoint,
             programSchedule: data.oven2.programSchedule,
-            calibrationPoints: data.oven2.calibrationPoints,
+            // calibrationPoints are no longer part of the form or schema
             offsets: [ // Map form offsets to store format
               data.oven2.offset1 ?? 0,
               data.oven2.offset2 ?? 0,
               data.oven2.offset3 ?? 0,
               data.oven2.offset4 ?? 0,
             ]
-          });
+          };
+        updateOvenSettings('oven2', oven2Settings);
       }
 
       toast({
@@ -349,7 +353,7 @@ export default function Settings() {
                 ovenId="oven1"
                 control={control}
                 currentIsDualMode={currentIsDualMode} // Pass watched value for conditional rendering
-                toast={toast}
+                // toast={toast} // toast no longer needed here
                 // Pass disabled state if needed for Oven 2 name based on currentOvenType
             />
             {/* Conditionally render Oven 2 settings based on the watched value */}
@@ -358,7 +362,7 @@ export default function Settings() {
                     ovenId="oven2"
                     control={control}
                     currentIsDualMode={currentIsDualMode}
-                    toast={toast}
+                    // toast={toast} // toast no longer needed here
                  />
             )}
         </div>
@@ -522,7 +526,7 @@ export default function Settings() {
                             <FormItem>
                             <FormLabel>Ignore Time (seconds)</FormLabel>
                             <FormControl>
-                                <Input type="number" {...field} />
+                                <Input type="number" {...field} value={field.value || 0} onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)} />
                             </FormControl>
                              <FormDescription>
                                 Time in seconds to ignore certain events or triggers.

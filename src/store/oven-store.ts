@@ -1,3 +1,4 @@
+
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 
@@ -7,17 +8,18 @@ export type SelectOnOff = '0' | '1'; // 0: Disable, 1: Enable
 export type AutoTrackoutOption = '0' | '1' | '2';
 export type A1019PinValue = '1' | '2'; // Represents Oven 1 or Oven 2
 
-export interface CalibrationPoint {
-  setpoint: number;
-  actual: number;
-}
+// Removed CalibrationPoint interface
+// export interface CalibrationPoint {
+//   setpoint: number;
+//   actual: number;
+// }
 
 export interface HistoricalDataPoint {
     timestamp: string; // ISO string
     temperature: number | null;
 }
 
-export interface OvenData {
+export interface OvenSettings { // Renamed from OvenData to avoid conflict in Settings.tsx
   name: string;
   temperature: number | null; // Current temperature
   humidity: number | null;    // Current humidity
@@ -26,7 +28,8 @@ export interface OvenData {
   alerts: string[];
   temperatureSetpoint: number | null;
   programSchedule: string; // Cron expression or empty
-  calibrationPoints: CalibrationPoint[];
+  // calibrationPoints: CalibrationPoint[]; // Removed calibrationPoints
+  offsets: number[]; // Array of 4 offset values
   historicalData: HistoricalDataPoint[]; // Store historical data here
 }
 
@@ -47,8 +50,8 @@ interface OvenStoreState {
   a1019Pins: A1019PinValue[]; // Array of 8 values ('1' or '2')
 
   ovens: {
-    oven1: OvenData;
-    oven2: OvenData;
+    oven1: OvenSettings; // Use renamed type
+    oven2: OvenSettings; // Use renamed type
   };
 
   // Actions
@@ -66,18 +69,19 @@ interface OvenStoreState {
   }>) => void;
   updateOvenSettings: (
     ovenId: 'oven1' | 'oven2',
-    settings: Partial<Pick<OvenData, 'name' | 'temperatureSetpoint' | 'programSchedule' | 'calibrationPoints'>>
+    // Removed calibrationPoints from the pick
+    settings: Partial<Pick<OvenSettings, 'name' | 'temperatureSetpoint' | 'programSchedule' | 'offsets' >>
   ) => void;
   updateOvenData: (
     ovenId: 'oven1' | 'oven2',
-    data: Partial<OvenData>
+    data: Partial<OvenSettings> // Use renamed type
    ) => void;
    initializeStore: () => void; // Action to trigger initialization/rehydration
    _hasHydrated: boolean; // Internal flag for hydration status
    setHasHydrated: (state: boolean) => void; // Action to set hydration status
 }
 
-const initialOvenState: OvenData = {
+const initialOvenState: OvenSettings = { // Use renamed type
   name: '',
   temperature: null,
   humidity: null,
@@ -86,7 +90,8 @@ const initialOvenState: OvenData = {
   alerts: [],
   temperatureSetpoint: 100, // Default setpoint
   programSchedule: '',
-  calibrationPoints: [],
+  // calibrationPoints: [], // Removed calibrationPoints
+  offsets: [0, 0, 0, 0], // Initialize offsets array
   historicalData: [],
 };
 
@@ -139,7 +144,8 @@ export const useOvenStore = create<OvenStoreState>()(
               name: settings.name ?? state.ovens[ovenId].name,
               temperatureSetpoint: settings.temperatureSetpoint ?? state.ovens[ovenId].temperatureSetpoint,
               programSchedule: settings.programSchedule ?? state.ovens[ovenId].programSchedule,
-              calibrationPoints: settings.calibrationPoints ?? state.ovens[ovenId].calibrationPoints,
+              // calibrationPoints: settings.calibrationPoints ?? state.ovens[ovenId].calibrationPoints, // Removed calibrationPoints update
+              offsets: settings.offsets ?? state.ovens[ovenId].offsets, // Update offsets
             },
           },
         })),
@@ -196,20 +202,22 @@ export const useOvenStore = create<OvenStoreState>()(
                 name: state.ovens.oven1.name,
                 temperatureSetpoint: state.ovens.oven1.temperatureSetpoint,
                 programSchedule: state.ovens.oven1.programSchedule,
-                calibrationPoints: state.ovens.oven1.calibrationPoints,
+                // calibrationPoints: state.ovens.oven1.calibrationPoints, // Removed from persistence
+                offsets: state.ovens.oven1.offsets, // Persist offsets
             },
             oven2: {
                 name: state.ovens.oven2.name,
                 temperatureSetpoint: state.ovens.oven2.temperatureSetpoint,
                 programSchedule: state.ovens.oven2.programSchedule,
-                calibrationPoints: state.ovens.oven2.calibrationPoints,
+                // calibrationPoints: state.ovens.oven2.calibrationPoints, // Removed from persistence
+                offsets: state.ovens.oven2.offsets, // Persist offsets
             }
         }
       }),
         onRehydrateStorage: () => (state) => {
             if (state) {
                  // Ensure historicalData is initialized as an array after rehydration
-                 // Also ensure a1019Pins is initialized correctly
+                 // Also ensure a1019Pins and offsets are initialized correctly
                  const currentOvens = state.ovens;
                  if (!Array.isArray(currentOvens.oven1.historicalData)) {
                     currentOvens.oven1.historicalData = [];
@@ -220,6 +228,13 @@ export const useOvenStore = create<OvenStoreState>()(
                  if (!Array.isArray(state.a1019Pins) || state.a1019Pins.length !== 8) {
                     state.a1019Pins = Array(8).fill('1');
                  }
+                 if (!Array.isArray(currentOvens.oven1.offsets) || currentOvens.oven1.offsets.length !== 4) {
+                    currentOvens.oven1.offsets = [0, 0, 0, 0];
+                 }
+                  if (!Array.isArray(currentOvens.oven2.offsets) || currentOvens.oven2.offsets.length !== 4) {
+                    currentOvens.oven2.offsets = [0, 0, 0, 0];
+                 }
+
                 state.setHasHydrated(true);
             }
         },
