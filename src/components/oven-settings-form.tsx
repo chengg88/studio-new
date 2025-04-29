@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -56,8 +57,10 @@ export default function OvenSettingsForm({
     }
   };
 
+  const isOven2Disabled = !currentIsDualMode && ovenId === 'oven2';
+
   return (
-    <Card>
+    <Card className={isOven2Disabled ? 'opacity-50 pointer-events-none' : ''}>
       <CardHeader>
         <CardTitle>
           {currentIsDualMode
@@ -79,13 +82,14 @@ export default function OvenSettingsForm({
             <FormItem>
               <FormLabel>Oven Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Main Bake Oven" {...field} />
+                <Input placeholder="e.g., Main Bake Oven" {...field} disabled={isOven2Disabled} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
+        {/* Temperature Setpoint - Keep as before */}
         <FormField
           control={control}
           name={`${ovenId}.temperatureSetpoint`}
@@ -93,13 +97,14 @@ export default function OvenSettingsForm({
             <FormItem>
               <FormLabel>Temperature Setpoint (°C)</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="number" {...field} disabled={isOven2Disabled} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
+        {/* Program Schedule - Keep as before */}
         <FormField
           control={control}
           name={`${ovenId}.programSchedule`}
@@ -107,7 +112,7 @@ export default function OvenSettingsForm({
             <FormItem>
               <FormLabel>Program Schedule (Cron Expression)</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., 0 8 * * 1-5" {...field} />
+                <Input placeholder="e.g., 0 8 * * 1-5" {...field} disabled={isOven2Disabled} />
               </FormControl>
               <FormDescription>
                 Enter a cron expression to schedule programs. Leave blank for
@@ -118,8 +123,32 @@ export default function OvenSettingsForm({
           )}
         />
 
-        <Separator />
+         {/* Temperature Offsets */}
+         <Separator />
+         <div>
+           <h4 className="text-md font-semibold mb-2">Temperature Offsets</h4>
+           <div className="grid grid-cols-2 gap-4">
+             {[1, 2, 3, 4].map((index) => (
+               <FormField
+                 key={index}
+                 control={control}
+                 name={`${ovenId}.offset${index}` as const} // Use 'as const' for type safety
+                 render={({ field }) => (
+                   <FormItem>
+                     <FormLabel>Offset {index}</FormLabel>
+                     <FormControl>
+                       <Input type="number" placeholder="Offset °C" {...field} disabled={isOven2Disabled} />
+                     </FormControl>
+                     <FormMessage className="text-xs" />
+                   </FormItem>
+                 )}
+               />
+             ))}
+           </div>
+         </div>
 
+        {/* Temperature Calibration - Keep as before */}
+        <Separator />
         <div>
           <h4 className="text-md font-semibold mb-2">
             Temperature Calibration
@@ -143,6 +172,7 @@ export default function OvenSettingsForm({
                         type="number"
                         placeholder="Setpoint °C"
                         {...field}
+                        disabled={isOven2Disabled}
                       />
                     </FormControl>
                     <FormMessage className="text-xs" />
@@ -158,7 +188,7 @@ export default function OvenSettingsForm({
                       Actual {index + 1}
                     </FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Actual °C" {...field} />
+                      <Input type="number" placeholder="Actual °C" {...field} disabled={isOven2Disabled} />
                     </FormControl>
                     <FormMessage className="text-xs" />
                   </FormItem>
@@ -170,6 +200,7 @@ export default function OvenSettingsForm({
                 size="icon"
                 onClick={() => remove(index)}
                 aria-label="Remove calibration point"
+                disabled={isOven2Disabled}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -180,7 +211,7 @@ export default function OvenSettingsForm({
             variant="outline"
             size="sm"
             onClick={handleAddPoint}
-            disabled={fields.length >= 4}
+            disabled={fields.length >= 4 || isOven2Disabled}
           >
             Add Calibration Point
           </Button>

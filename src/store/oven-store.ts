@@ -2,6 +2,10 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 
 export type OvenState = 'Idle' | 'Preheating' | 'Running' | 'Cooling' | 'Error';
+export type OvenTypeOption = '1' | '2' | '3' | '4'; // 1: double door, 2: 2 single, 3: 1 single, 4: ENOHK
+export type SelectOnOff = '0' | '1'; // 0: Disable, 1: Enable
+export type AutoTrackoutOption = '0' | '1' | '2';
+export type A1019PinValue = '1' | '2'; // Represents Oven 1 or Oven 2
 
 export interface CalibrationPoint {
   setpoint: number;
@@ -27,12 +31,39 @@ export interface OvenData {
 }
 
 interface OvenStoreState {
-  isDualMode: boolean;
+  // Old general settings
+  isDualMode: boolean; // Derived from ovenType, maybe remove? Let's keep for now for compatibility.
+  ovenType: OvenTypeOption; // New setting based on old HTML
+
+  // New general settings from old HTML
+  mesServerIp: string;
+  doorDetect: SelectOnOff;
+  autoTrackOut: AutoTrackoutOption;
+  bindMaterialBox: SelectOnOff;
+  buzzerNetworkDetect: SelectOnOff;
+  czA5Rule: SelectOnOff;
+  ignoreTime: number;
+  tjKeepingTrackin: SelectOnOff;
+  a1019Pins: A1019PinValue[]; // Array of 8 values ('1' or '2')
+
   ovens: {
     oven1: OvenData;
     oven2: OvenData;
   };
-  setDualMode: (isDual: boolean) => void;
+
+  // Actions
+  setOvenType: (ovenType: OvenTypeOption) => void;
+  updateGeneralSettings: (settings: Partial<{
+    mesServerIp: string;
+    doorDetect: SelectOnOff;
+    autoTrackOut: AutoTrackoutOption;
+    bindMaterialBox: SelectOnOff;
+    buzzerNetworkDetect: SelectOnOff;
+    czA5Rule: SelectOnOff;
+    ignoreTime: number;
+    tjKeepingTrackin: SelectOnOff;
+    a1019Pins: A1019PinValue[];
+  }>) => void;
   updateOvenSettings: (
     ovenId: 'oven1' | 'oven2',
     settings: Partial<Pick<OvenData, 'name' | 'temperatureSetpoint' | 'programSchedule' | 'calibrationPoints'>>
@@ -59,10 +90,24 @@ const initialOvenState: OvenData = {
   historicalData: [],
 };
 
+const initialGeneralSettings = {
+    mesServerIp: '127.0.0.1', // Default example
+    doorDetect: '0' as SelectOnOff,
+    autoTrackOut: '0' as AutoTrackoutOption,
+    bindMaterialBox: '0' as SelectOnOff,
+    buzzerNetworkDetect: '0' as SelectOnOff,
+    czA5Rule: '0' as SelectOnOff,
+    ignoreTime: 20,
+    tjKeepingTrackin: '0' as SelectOnOff,
+    a1019Pins: Array(8).fill('1') as A1019PinValue[], // Default all to Oven 1
+};
+
 export const useOvenStore = create<OvenStoreState>()(
   persist(
     (set, get) => ({
-      isDualMode: false,
+      isDualMode: false, // Will be updated based on ovenType
+      ovenType: '3', // Default to 1 single door oven
+      ...initialGeneralSettings, // Spread initial general settings
       ovens: {
         oven1: {...initialOvenState, name: 'Oven 1'}, // Default names
         oven2: {...initialOvenState, name: 'Oven 2'},
@@ -73,16 +118,17 @@ export const useOvenStore = create<OvenStoreState>()(
             set({ _hasHydrated: state });
       },
 
-      // This action needs to be called explicitly after store creation or in a useEffect
       initializeStore: () => {
-          // Logic to potentially run after hydration can go here,
-          // but Zustand's persist middleware handles the rehydration itself.
-          // We mainly use this to ensure consumers wait for hydration if needed.
-          // console.log("Store initialized/rehydrated.");
-          // If you need to run logic *after* hydration is complete, use the onRehydrateStorage callback
+          // Logic after hydration can go here if needed
       },
 
-      setDualMode: (isDual) => set({isDualMode: isDual}),
+      setOvenType: (ovenType) => {
+        const isDual = ovenType === '1' || ovenType === '2'; // 1 double door or 2 single doors
+        set({ ovenType: ovenType, isDualMode: isDual });
+      },
+
+      updateGeneralSettings: (settings) => set((state) => ({ ...state, ...settings })),
+
 
       updateOvenSettings: (ovenId, settings) =>
         set((state) => ({
@@ -101,17 +147,16 @@ export const useOvenStore = create<OvenStoreState>()(
        updateOvenData: (ovenId, data) =>
         set((state) => {
           const currentOven = state.ovens[ovenId];
-           // Ensure current historical data is an array before spreading
+          // Ensure current historical data is an array before spreading
           const currentHistoricalData = Array.isArray(currentOven.historicalData) ? currentOven.historicalData : [];
-           // Append new historical data if provided, keep existing otherwise
+          // Append new historical data if provided, keep existing otherwise
           const newHistoricalData = data.historicalData
                 ? [...currentHistoricalData, ...data.historicalData] // Naive append
                 : currentHistoricalData;
 
-           // Simple approach: Keep last N points (e.g., 1000)
-            const maxHistory = 1000;
-            const limitedHistoricalData = newHistoricalData.slice(-maxHistory);
-
+          // Simple approach: Keep last N points (e.g., 1000)
+          const maxHistory = 1000;
+          const limitedHistoricalData = newHistoricalData.slice(-maxHistory);
 
           return {
             ovens: {
@@ -123,7 +168,8 @@ export const useOvenStore = create<OvenStoreState>()(
                 activeProgram: data.activeProgram !== undefined ? data.activeProgram : currentOven.activeProgram,
                 state: data.state !== undefined ? data.state : currentOven.state,
                 alerts: data.alerts !== undefined ? data.alerts : currentOven.alerts,
-                historicalData: data.historicalData ? limitedHistoricalData : currentHistoricalData, // Use the potentially limited data
+                // Use the potentially limited data, ensure it's an array if source was invalid
+                historicalData: data.historicalData ? limitedHistoricalData : currentHistoricalData,
               },
             },
           };
@@ -132,22 +178,25 @@ export const useOvenStore = create<OvenStoreState>()(
     {
       name: 'oven-view-storage', // Local storage key
       storage: createJSONStorage(() => localStorage), // Use local storage
-      // Only persist settings, not real-time data like current temp/humidity/state/alerts/history
+      // Persist general settings and oven-specific settings
       partialize: (state) => ({
-        isDualMode: state.isDualMode,
+        ovenType: state.ovenType,
+        isDualMode: state.isDualMode, // Persist derived state too for simplicity on hydration
+        mesServerIp: state.mesServerIp,
+        doorDetect: state.doorDetect,
+        autoTrackOut: state.autoTrackOut,
+        bindMaterialBox: state.bindMaterialBox,
+        buzzerNetworkDetect: state.buzzerNetworkDetect,
+        czA5Rule: state.czA5Rule,
+        ignoreTime: state.ignoreTime,
+        tjKeepingTrackin: state.tjKeepingTrackin,
+        a1019Pins: state.a1019Pins,
         ovens: {
             oven1: {
                 name: state.ovens.oven1.name,
                 temperatureSetpoint: state.ovens.oven1.temperatureSetpoint,
                 programSchedule: state.ovens.oven1.programSchedule,
                 calibrationPoints: state.ovens.oven1.calibrationPoints,
-                // DO NOT persist these:
-                // temperature: null,
-                // humidity: null,
-                // activeProgram: null,
-                // state: 'Idle',
-                // alerts: [],
-                // historicalData: []
             },
             oven2: {
                 name: state.ovens.oven2.name,
@@ -160,12 +209,16 @@ export const useOvenStore = create<OvenStoreState>()(
         onRehydrateStorage: () => (state) => {
             if (state) {
                  // Ensure historicalData is initialized as an array after rehydration
+                 // Also ensure a1019Pins is initialized correctly
                  const currentOvens = state.ovens;
                  if (!Array.isArray(currentOvens.oven1.historicalData)) {
                     currentOvens.oven1.historicalData = [];
                  }
                   if (!Array.isArray(currentOvens.oven2.historicalData)) {
                     currentOvens.oven2.historicalData = [];
+                 }
+                 if (!Array.isArray(state.a1019Pins) || state.a1019Pins.length !== 8) {
+                    state.a1019Pins = Array(8).fill('1');
                  }
                 state.setHasHydrated(true);
             }
