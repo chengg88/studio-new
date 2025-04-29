@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, {useEffect, useState} from 'react';
@@ -28,6 +29,7 @@ import {Badge} from '@/components/ui/badge';
 import DateRangePicker from './date-range-picker';
 import type {DateRange} from 'react-day-picker';
 import {subDays} from 'date-fns';
+import { cn } from '@/lib/utils'; // Import cn utility
 
 // Mock function to fetch oven data (replace with actual API call)
 async function fetchOvenData(ovenId: string): Promise<Partial<OvenData>> {
@@ -263,7 +265,13 @@ export default function Dashboard() {
         <h2 className="text-2xl font-semibold">Oven Status</h2>
         <DateRangePicker date={dateRange} onDateChange={setDateRange} />
       </div>
-       <div className={`grid gap-6 ${isDualMode ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
+       {/* Adjust grid layout based on isDualMode */}
+       <div
+         className={cn(
+           'grid gap-6',
+           isDualMode ? 'lg:grid-cols-2' : 'lg:grid-cols-1' // Use 2 columns for dual mode, 1 column for single mode on large screens
+         )}
+       >
          {renderOvenCard('oven1')}
          {isDualMode && renderOvenCard('oven2')}
       </div>
