@@ -60,7 +60,7 @@ function AppLayoutContent({children}: PropsWithChildren) {
 
 
   return (
-      <div className="flex min-h-screen flex-col bg-background"> {/* Ensure background color */}
+      <div className="flex min-h-screen flex-col bg-background" style={{ width: '150%' }}> {/* Ensure background color */}
         <div className="flex flex-1">
            {/* Use defaultCollapsed prop directly on SidebarProvider */}
            <Sidebar collapsible="icon" side="left">

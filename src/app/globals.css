@@ -42,6 +42,7 @@ body {
     --sidebar-accent-foreground: 210 40% 98%; /* Use primary foreground for sidebar active/accent text */
     --sidebar-border: 220 13% 88%;
     --sidebar-ring: 207 70% 54%;
+    --dashboard-width: 90%;
   }
   .dark {
     /* Provide a dark theme variant if needed, otherwise adjust base light theme */
