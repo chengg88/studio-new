@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+
+# Docker specific
+Dockerfile
+.dockerignore
+
+# Node modules
+node_modules
+
+# Next.js build artifacts and cache
+.next
+out
+.turbo
+
+# Environment files (secrets should be passed at runtime)
+.env*.local
+.env.development
+.env.production
+# The base .env is copied as it's usually for non-secret defaults
+
+# Editor/IDE specific
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+
+# Firebase CLI files (if not deploying with Firebase)
+firebase.json
+.firebaserc
+
+# TypeScript build artifacts (if any, though `noEmit: true` is set)
+dist/
+build/
+
+# Test files (if not needed in production image)
+# e.g. *.test.ts, *.spec.ts
+
+# README and other documentation not needed in the image
+README.md
+docs/
+
+# Other specific files/folders to ignore
+# e.g. temp_files/
+# assets_not_used_in_prod/
