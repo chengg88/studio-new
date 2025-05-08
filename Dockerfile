@@ -1,59 +1,46 @@
-# Stage 1: Builder
+# Use a lightweight base image that supports ARM architecture (like Alpine Linux with Node.js)
 FROM node:20-alpine AS builder
+
+# Set the working directory inside the container
 WORKDIR /app
 
+# Copy package.json and package-lock.json (or yarn.lock)
+COPY package*.json ./
+
 # Install dependencies
-COPY package.json package-lock.json ./
-# Using npm ci for potentially faster and more reliable installs in CI/build environments
-RUN npm ci
+RUN npm install
 
 # Copy the rest of the application code
-# .dockerignore will handle exclusions
 COPY . .
 
 # Build the Next.js application
+# This will create the .next folder with the production build
 RUN npm run build
 
-# Stage 2: Production Runner
-FROM node:20-alpine AS runner
+# Production image
+FROM node:20-alpine
+
 WORKDIR /app
 
-# Set environment to production
+# Set NODE_ENV to production
 ENV NODE_ENV production
 
-# The Genkit AI might need this. User should set it at runtime via -e or docker-compose.
-# Example: docker run -e GOOGLE_GENAI_API_KEY="your_actual_api_key" ...
-# ENV GOOGLE_GENAI_API_KEY your_api_key_here
+# Copy built assets from builder stage
+# We need the .next folder (production build)
+COPY --from=builder /app/.next ./.next
+# We need the public folder for static assets
+COPY --from=builder /app/public ./public
+# We need package.json to run `npm start` which executes `next start`
+COPY --from=builder /app/package.json ./package.json
+# We need node_modules for runtime dependencies.
+# For a leaner image, consider using `output: "standalone"` in next.config.js
+# and copying the .next/standalone directory instead.
+COPY --from=builder /app/node_modules ./node_modules
 
-# Create a non-root user for security best practices
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
-
-# Install only production dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-# Copy necessary files from the builder stage
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/next.config.ts ./next.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/messages ./messages
-COPY --from=builder --chown=nextjs:nodejs /app/.env ./.env
-COPY --from=builder --chown=nextjs:nodejs /app/src/i18n.ts ./src/i18n.ts
-COPY --from=builder --chown=nextjs:nodejs /app/src/middleware.ts ./src/middleware.ts
-COPY --from=builder --chown=nextjs:nodejs /app/src/navigation.ts ./src/navigation.ts
-
-
-# Change ownership of the app directory to the new user
-RUN chown -R nextjs:nodejs /app
-
-# Switch to the non-root user
-USER nextjs
-
-# Expose the port the app runs on (default is 3000 for next start)
+# Next.js runs on port 3000 by default.
+# The user wants to map host port 80 to this container port.
 EXPOSE 3000
 
-# Set the default command to run the application
-# The "start" script in package.json is `next start`
-# To run on a different port, set the PORT environment variable, e.g., -e PORT=9002
-CMD ["npm", "run", "start"]
+# Start the Next.js production server
+# The `start` script in package.json is `next start`
+CMD ["npm", "start"]
