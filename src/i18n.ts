@@ -1,29 +1,25 @@
 
 import {getRequestConfig} from 'next-intl/server';
-import {getLocale} from 'next-intl/server'; // For fetching the active locale
 import {notFound} from 'next/navigation';
-import {locales as appLocales, defaultLocale as appDefaultLocale } from './config'; // Using config file for locales
+// Using config file for locales, ensuring defaultLocale is also picked up
+import {locales as appLocales, defaultLocale as appDefaultLocale, type Locale} from '@/config';
 
 // Define the locales supported by the application
 export const locales = appLocales;
-export const defaultLocale = appDefaultLocale;
+export const defaultLocale = appDefaultLocale; // Ensure this is exported
 
-export default getRequestConfig(async () => {
-  // Obtain the current locale
-  // The `getLocale` function is used here as per the deprecation message's implied direction
-  // and common practice for fetching locale in server-side `next-intl` contexts.
-  const locale = await getLocale();
+export default getRequestConfig(async (params) => {
+  const locale = params.locale as Locale;
 
   // Validate that the incoming `locale` parameter is valid
-  if (!locales.includes(locale as any)) {
+  if (!locales.includes(locale)) {
+    console.error(`Unsupported locale: ${locale}. Available locales: ${locales.join(', ')}`);
     notFound();
   }
 
   return {
     messages: (await import(`../messages/${locale}.json`)).default,
-    locale: locale // Ensure locale is explicitly passed
-    // The `locale` is implicitly part of the configuration returned by `getRequestConfig`
-    // when `getLocale()` is used, and `NextIntlClientProvider` will use it.
+    locale // Ensure locale is explicitly passed
   };
 });
 
@@ -31,3 +27,4 @@ export default getRequestConfig(async () => {
 type Messages = typeof import('../messages/en.json');
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 declare interface IntlMessages extends Messages {}
+
