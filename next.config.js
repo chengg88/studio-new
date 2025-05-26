@@ -6,7 +6,7 @@ const withNextIntl = createNextIntlPlugin(); // Initialize the plugin
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'export', // Added for static export, ensure generateStaticParams is in relevant pages
+  // output: 'export', // Removed for server-side capabilities with API routes
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -14,11 +14,15 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true, // Required for static export with next/image if not using a custom loader
+    unoptimized: true, // Kept for flexibility, can be removed if a custom loader is used
     remotePatterns: [
-      // Removed remote patterns for picsum.photos, via.placeholder.com, and placehold.co
-      // Ensure all images are now sourced locally (e.g., from the /public folder)
-      // or use a custom loader if external images are absolutely necessary and can be proxied.
+      // Placeholder images are fine for local development,
+      // but for production, ensure images are optimized and possibly local.
+      // Consider removing these if all images are local or if you use a different image strategy.
+       {
+        protocol: 'https',
+        hostname: 'placehold.co',
+      },
     ],
   },
 };
