@@ -1,0 +1,17 @@
+// src/lib/redis.ts
+import Redis from 'ioredis';
+
+const redisUrl = process.env.REDIS_URL;
+
+if (!redisUrl) {
+  console.warn('REDIS_URL environment variable is not set. Redis client will not be initialized.');
+}
+
+// Conditional instantiation
+const redis = redisUrl ? new Redis(redisUrl) : null;
+
+redis?.on('error', (err) => {
+  console.error('Redis client error:', err);
+});
+
+export default redis;
