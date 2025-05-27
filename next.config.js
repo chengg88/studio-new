@@ -6,7 +6,6 @@ const withNextIntl = createNextIntlPlugin(); // Initialize the plugin
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // output: 'export', // Removed for server-side capabilities with API routes
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -16,13 +15,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true, // Kept for flexibility, can be removed if a custom loader is used
     remotePatterns: [
-      // Placeholder images are fine for local development,
-      // but for production, ensure images are optimized and possibly local.
-      // Consider removing these if all images are local or if you use a different image strategy.
-       {
-        protocol: 'https',
-        hostname: 'placehold.co',
-      },
+      // No remote patterns - all images should be local
     ],
   },
 };
