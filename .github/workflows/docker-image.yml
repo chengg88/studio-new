@@ -29,7 +29,7 @@ jobs:
       - name: Build and push Docker image (x86_64 & armv7)
         uses: docker/build-push-action@v6
         with:
-          platforms: linux/amd64,linux/arm/v7  # 建置 x86_64 和 ARMv7 版本
+          platforms: linux/amd64,linux/arm/v7
           tags: |
             ${{ vars.DOCKER_USER }}/ovenview-app:latest
             ${{ vars.DOCKER_USER }}/ovenview-app:armv7
@@ -38,4 +38,4 @@ jobs:
             BUILD_ENV=production
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          progress: plain
+
