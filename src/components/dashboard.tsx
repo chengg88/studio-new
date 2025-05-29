@@ -33,7 +33,7 @@ import {cn} from '@/lib/utils';
 import {useTranslations} from 'next-intl';
 
 // Fetches current status and historical data for an oven
-async function fetchFullOvenData(ovenId: string): Promise<Partial<OvenData>> {
+async function fetchFullOvenData(ovenId: string, currentStoreData: OvenData): Promise<Partial<OvenData>> {
   try {
     const [statusRes, historyRes] = await Promise.all([
       fetch(`/api/oven/status/${ovenId}`),
@@ -49,30 +49,38 @@ async function fetchFullOvenData(ovenId: string): Promise<Partial<OvenData>> {
 
     let historicalData: HistoricalDataPoint[] = [];
     if (historyRes.ok) {
-      historicalData = await historyRes.json();
+      const historyJson = await historyRes.json();
+      if (Array.isArray(historyJson)) {
+          historicalData = historyJson;
+      } else {
+          console.warn(`Received non-array history for ${ovenId}:`, historyJson);
+      }
     } else {
       console.warn(`Failed to fetch history for ${ovenId}: ${historyRes.statusText}`);
     }
     
-    // The name comes from config, not status API, so we don't map it here.
-    // It's populated in the store by initializeStore.
+    // Prioritize name from status API if available, otherwise keep from store (config)
+    const ovenName = statusData.name || currentStoreData.name;
+
     return {
-      temperature: statusData.temperature, // This should now come from t1 in history or status
-      humidity: statusData.humidity !== undefined ? statusData.humidity : null, // Humidity might not be available
+      name: ovenName,
+      temperature: historicalData.length > 0 ? historicalData[historicalData.length - 1].temperature : currentStoreData.temperature,
+      humidity: statusData.humidity !== undefined ? statusData.humidity : null, // Will be null from API
       activeProgram: statusData.activeProgram || 'None',
       state: (statusData.state as OvenState) || 'IDLE',
       alerts: statusData.alerts || [],
-      historicalData: historicalData,
+      historicalData: historicalData.length > 0 ? historicalData : currentStoreData.historicalData, // Use new if available, else keep old
     };
   } catch (error) {
     console.error(`Error fetching full data for ${ovenId}:`, error);
     return {
-      temperature: null,
-      humidity: null,
+      name: currentStoreData.name, // Keep name from store on error
+      temperature: currentStoreData.temperature,
+      humidity: currentStoreData.humidity,
       activeProgram: 'None',
       state: 'Error',
       alerts: ['Data Fetch Error'],
-      historicalData: [],
+      historicalData: currentStoreData.historicalData,
     };
   }
 }
@@ -81,7 +89,7 @@ async function fetchFullOvenData(ovenId: string): Promise<Partial<OvenData>> {
 export default function Dashboard() {
   const t = useTranslations('Dashboard');
   const {ovens, isDualMode, updateOvenData, initializeStore, _hasHydrated, setHasHydrated} = useOvenStore();
-  const [isLoading, setIsLoading] = useState(true); // For initial full load
+  const [isLoading, setIsLoading] = useState(true);
   const [limits, setLimits] = useState<{[key: string]: TemperatureLimits}>({});
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: subDays(new Date(), 29),
@@ -90,34 +98,30 @@ export default function Dashboard() {
 
    const stateTranslations = useMemo(() => ({
     IDLE: t('stateIdle'),
-    Preheating: t('statePreheating'), // Assuming 'Preheating' maps to a state from API, Redis uses 'RUN', 'IDLE' etc.
+    Preheating: t('statePreheating'),
     RUN: t('stateRunning'),
-    Cooling: t('stateCooling'), // Assuming 'Cooling' maps to a state
+    Cooling: t('stateCooling'),
     Error: t('stateError'),
-    MAINT: "Maintenance", // Add if needed
-    // Map other states from your Redis/API if they differ
+    MAINT: "Maintenance", // Add if needed, ensure translation exists
   }), [t]);
 
   useEffect(() => {
     if (!_hasHydrated) {
-      // This ensures client-side hydration completes before attempting to load persisted state
-      // and then potentially fetching from API via initializeStore.
-      setHasHydrated(true);
+      setHasHydrated(true); // This will trigger initializeStore via onRehydrateStorage or direct call
     }
   }, [_hasHydrated, setHasHydrated]);
 
-  useEffect(() => {
-    if (_hasHydrated && !useOvenStore.getState().ovenType) { // Check if config is already loaded
-      initializeStore(); // Load settings from API (which populates store)
-    }
-  }, [_hasHydrated, initializeStore]);
-
+  // initializeStore is now called via setHasHydrated -> onRehydrateStorage or directly in setHasHydrated in store.
+  // So, no need to call it directly here unless specific conditions warrant it.
 
   const fetchData = useCallback(async () => {
+    if (!useOvenStore.getState()._hasHydrated) return; // Ensure store is hydrated before fetching
+
     try {
-      const ovenIdsToFetch = isDualMode ? ['oven1', 'oven2'] : ['oven1'];
+      const currentStore = useOvenStore.getState();
+      const ovenIdsToFetch = currentStore.isDualMode ? ['oven1', 'oven2'] : ['oven1'];
       
-      const dataPromises = ovenIdsToFetch.map(id => fetchFullOvenData(id));
+      const dataPromises = ovenIdsToFetch.map(id => fetchFullOvenData(id, currentStore.ovens[id as 'oven1' | 'oven2']));
       const limitsPromises = ovenIdsToFetch.map(id => getTemperatureLimits(id).then(lim => ({id, lim})));
 
       const [ovenDataResults, limitsResults] = await Promise.all([
@@ -127,7 +131,7 @@ export default function Dashboard() {
 
       ovenDataResults.forEach((data, index) => {
           const ovenId = ovenIdsToFetch[index];
-          updateOvenData(ovenId, data);
+          updateOvenData(ovenId, data); // This now handles merging logic better
       });
 
       const newLimits = limitsResults.reduce((acc, {id, lim}) => {
@@ -137,30 +141,30 @@ export default function Dashboard() {
       setLimits(newLimits);
 
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error('Failed to fetch dashboard data:', error);
     } finally {
-        if (isLoading) setIsLoading(false); // Set loading to false after initial fetch
+        if (isLoading) setIsLoading(false);
     }
-  }, [isDualMode, updateOvenData, isLoading]);
+  }, [updateOvenData, isLoading]); // Removed isDualMode from here as it's read from store inside
 
 
   useEffect(() => {
-    if (!_hasHydrated) return; // Don't fetch if not hydrated
+    if (!_hasHydrated) return;
 
-    fetchData(); // Initial fetch
-    const intervalId = setInterval(fetchData, 5000); // Refresh data every 5 seconds
+    fetchData();
+    const intervalId = setInterval(fetchData, 5000);
     return () => clearInterval(intervalId);
-  }, [_hasHydrated, fetchData]); // Add fetchData to dependency array
+  }, [_hasHydrated, fetchData]);
 
   function getStateIcon(state: OvenState) {
     switch (state) {
       case 'IDLE':
         return <PowerOff className="w-5 h-5 text-muted-foreground" />;
-      case 'Preheating': // Or map your actual preheating state string
+      case 'Preheating':
         return <Loader className="w-5 h-5 text-yellow-500 animate-spin" />;
       case 'RUN':
         return <PlayCircle className="w-5 h-5 text-accent" />;
-      case 'Cooling': // Or map your actual cooling state string
+      case 'Cooling':
         return <PauseCircle className="w-5 h-5 text-blue-500" />;
       case 'Error':
         return <AlertCircle className="w-5 h-5 text-destructive" />;
@@ -174,11 +178,11 @@ export default function Dashboard() {
   function getStateBadgeVariant(state: OvenState): "default" | "secondary" | "destructive" | "outline" {
       switch (state) {
           case 'IDLE': return 'secondary';
-          case 'Preheating': return 'default';
-          case 'RUN': return 'default';
-          case 'Cooling': return 'outline';
+          case 'Preheating': return 'default'; // Consider bg-yellow-500 text-yellow-foreground if theme supports
+          case 'RUN': return 'default'; // Consider bg-green-500 text-green-foreground
+          case 'Cooling': return 'outline'; // Consider bg-blue-500 text-blue-foreground
           case 'Error': return 'destructive';
-          case 'MAINT': return 'default'; // Example variant for MAINT
+          case 'MAINT': return 'default'; // Consider bg-orange-500 text-orange-foreground
           default: return 'secondary';
       }
   }
@@ -187,19 +191,23 @@ export default function Dashboard() {
   const renderOvenCard = (ovenId: 'oven1' | 'oven2') => {
     const oven = ovens[ovenId];
     const ovenLimits = limits[ovenId];
-    // Name is now primarily from Zustand store, populated by OVEN:config
-    const customOvenName = oven.name || (isDualMode ? (ovenId === 'oven1' ? t('oven1') : t('oven2')) : t('oven'));
+    // Name now comes from store, primarily populated by OVEN:config
+    // but can be updated by status API if logic in updateOvenData handles it.
+    const customOvenName = oven.name || (useOvenStore.getState().isDualMode ? (ovenId === 'oven1' ? t('oven1') : t('oven2')) : t('oven'));
 
 
-    if (!oven) return null;
+    if (!oven) return null; // Should not happen if store is initialized correctly
 
-    const filteredData = oven.historicalData?.filter(d => {
+    const filteredData = (Array.isArray(oven.historicalData) ? oven.historicalData : []).filter(d => {
+        if (!d || !d.timestamp) return false; // Ensure data point and timestamp exist
         const timestamp = new Date(d.timestamp);
+        if (isNaN(timestamp.getTime())) return false; // Ensure valid date
+
         const from = dateRange?.from ? new Date(dateRange.from.setHours(0,0,0,0)) : undefined;
         const to = dateRange?.to ? new Date(dateRange.to.setHours(23,59,59,999)): undefined;
         if (!from || !to) return true;
         return timestamp >= from && timestamp <= to;
-    }) || [];
+    });
 
     const translatedState = stateTranslations[oven.state as keyof typeof stateTranslations] || oven.state;
 
@@ -208,7 +216,13 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle>{customOvenName}</CardTitle>
            <CardDescription>
-             <Badge variant={getStateBadgeVariant(oven.state)} className="capitalize">{translatedState}</Badge>
+             <Badge variant={getStateBadgeVariant(oven.state)} className={cn("capitalize", 
+                oven.state === 'RUN' ? 'bg-accent text-accent-foreground' : '',
+                oven.state === 'Preheating' ? 'bg-yellow-500 text-yellow-foreground' : '', // Example custom colors
+                oven.state === 'Cooling' ? 'bg-blue-500 text-blue-foreground' : ''
+              )}>
+                {translatedState}
+              </Badge>
            </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 flex-grow">
@@ -218,7 +232,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">{t('temperature')}</p>
                 <p className="text-lg font-semibold">
-                  {oven.temperature !== null ? `${oven.temperature}${t('temperatureUnit')}` : 'N/A'}
+                  {oven.temperature !== null ? `${oven.temperature.toFixed(1)}${t('temperatureUnit')}` : 'N/A'}
                 </p>
               </div>
             </div>
@@ -227,7 +241,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">{t('humidity')}</p>
                 <p className="text-lg font-semibold">
-                  {oven.humidity !== null ? `${oven.humidity}${t('humidityUnit')}` : 'N/A'}
+                  {oven.humidity !== null ? `${oven.humidity.toFixed(1)}${t('humidityUnit')}` : 'N/A'}
                 </p>
               </div>
             </div>
@@ -289,13 +303,13 @@ export default function Dashboard() {
     );
   };
 
-   if (isLoading && !_hasHydrated) { // Show loading if either initial hydration or data fetch is pending
+   if (isLoading && !_hasHydrated) {
     return <div className="flex justify-center items-center h-64"><Loader className="w-8 h-8 animate-spin" /> {t('loading')}</div>;
    }
 
 
   return (
-    <div className="space-y-6 w-full"> {/* Ensure full width */}
+    <div className="space-y-6 w-[var(--dashboard-width)] mx-auto">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">{t('ovenStatus')}</h2>
         <DateRangePicker
@@ -307,14 +321,15 @@ export default function Dashboard() {
        <div
          className={cn(
            'grid gap-6',
-           isDualMode
+           useOvenStore.getState().isDualMode // Use direct store access for conditional class
              ? 'grid-cols-1 lg:grid-cols-2'
-             : 'grid-cols-1 w-full' // Ensure single oven card takes full width available in its container
+             : 'grid-cols-1' 
          )}
        >
          {renderOvenCard('oven1')}
-         {isDualMode && renderOvenCard('oven2')}
+         {useOvenStore.getState().isDualMode && renderOvenCard('oven2')}
       </div>
     </div>
   );
 }
+
