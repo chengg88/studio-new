@@ -1,11 +1,8 @@
+const createNextIntlPlugin = require('next-intl/plugin'); // 使用 require()
 
-import type {NextConfig} from 'next';
-import createNextIntlPlugin from 'next-intl/plugin'; // Import the plugin
+const withNextIntl = createNextIntlPlugin(); // 初始化插件
 
-const withNextIntl = createNextIntlPlugin(); // Initialize the plugin
-
-const nextConfig: NextConfig = {
-  /* config options here */
+const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -13,11 +10,9 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true, // Kept for flexibility, can be removed if a custom loader is used
-    remotePatterns: [
-      // No remote patterns - all images should be local
-    ],
+    unoptimized: true,
+    remotePatterns: [],
   },
 };
 
-export default withNextIntl(nextConfig); // Wrap the config with the plugin
+module.exports = withNextIntl(nextConfig); // 使用 module.exports
