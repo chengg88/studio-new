@@ -24,19 +24,26 @@ export async function GET(
     // If `timestamp` is already a UNIX epoch or full ISO, this can be simplified.
     const rows = await db.all(
       `SELECT timestamp, time, t1, t2, t3, t4 FROM ${tableName} 
-       ORDER BY STRFTIME('%s', timestamp || ' ' || time) DESC 
+       ORDER BY STRFTIME('%s', time) DESC 
        LIMIT 1000`
     );
-
-    const historicalData = rows.map(row => ({
-      // Combine date and time to form a full ISO timestamp. Adjust if format is different.
-      timestamp: new Date(`${row.timestamp}T${row.time}Z`).toISOString(), // Assuming UTC, adjust if local
-      temperature: row.t1, // Using t1 as the primary temperature
-      // If you need all four points, return them:
-      // t1: row.t1, t2: row.t2, t3: row.t3, t4: row.t4,
-    })).reverse(); // Reverse to have oldest first for the chart
-
+    
+    const historicalData = rows.map(row => {
+      let formattedTimestamp = "Invalid Timestamp";
+    
+      if (row.timestamp && row.time) {
+        const parsedDate = Date.parse(row.time);
+        formattedTimestamp = !isNaN(parsedDate) ? new Date(parsedDate).toISOString() : "Invalid Timestamp";
+      }
+    
+      return {
+        timestamp: formattedTimestamp,
+        temperature: row.t1,
+      };
+    }).reverse();
+    
     return NextResponse.json(historicalData);
+
   } catch (error) {
     console.error(`Error fetching history for ${tableName} from SQLite:`, error);
     return NextResponse.json({ error: `Failed to fetch history for ${ovenId}` }, { status: 500 });
