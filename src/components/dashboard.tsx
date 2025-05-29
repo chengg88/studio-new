@@ -131,7 +131,16 @@ export default function Dashboard() {
 
       ovenDataResults.forEach((data, index) => {
           const ovenId = ovenIdsToFetch[index];
-          updateOvenData(ovenId, data); // This now handles merging logic better
+           // Ensure historicalData is initialized if missing or not an array
+           const currentOven = useOvenStore.getState().ovens[ovenId as 'oven1' | 'oven2'];
+           const existingHistoricalData = Array.isArray(currentOven.historicalData) ? currentOven.historicalData : [];
+           const incomingHistoricalData = Array.isArray(data.historicalData) ? data.historicalData : [];
+
+          updateOvenData(ovenId, {
+            ...data,
+            // Merge historical data carefully
+            historicalData: [...existingHistoricalData, ...incomingHistoricalData.filter(d => !existingHistoricalData.find(ed => ed.timestamp === d.timestamp))]
+          }); 
       });
 
       const newLimits = limitsResults.reduce((acc, {id, lim}) => {
@@ -232,7 +241,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">{t('temperature')}</p>
                 <p className="text-lg font-semibold">
-                  {oven.temperature !== null ? `${oven.temperature.toFixed(1)}${t('temperatureUnit')}` : 'N/A'}
+                  {typeof oven.temperature === 'number' ? `${oven.temperature.toFixed(1)}${t('temperatureUnit')}` : 'N/A'}
                 </p>
               </div>
             </div>
@@ -241,7 +250,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm text-muted-foreground">{t('humidity')}</p>
                 <p className="text-lg font-semibold">
-                  {oven.humidity !== null ? `${oven.humidity.toFixed(1)}${t('humidityUnit')}` : 'N/A'}
+                  {typeof oven.humidity === 'number' ? `${oven.humidity.toFixed(1)}${t('humidityUnit')}` : 'N/A'}
                 </p>
               </div>
             </div>
@@ -309,7 +318,7 @@ export default function Dashboard() {
 
 
   return (
-    <div className="space-y-6 w-[var(--dashboard-width)] mx-auto">
+    <div className="space-y-6 w-full mx-auto"> {/* Changed to w-full */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">{t('ovenStatus')}</h2>
         <DateRangePicker
@@ -321,15 +330,16 @@ export default function Dashboard() {
        <div
          className={cn(
            'grid gap-6',
-           useOvenStore.getState().isDualMode // Use direct store access for conditional class
-             ? 'grid-cols-1 lg:grid-cols-2'
-             : 'grid-cols-1' 
+            // Always use grid-cols-1 on smaller screens
+            // On lg screens and up, use grid-cols-2 if isDualMode is true, otherwise grid-cols-1 but with a max-width to prevent it from becoming too wide
+           isDualMode 
+             ? 'grid-cols-1 lg:grid-cols-2' 
+             : 'grid-cols-1 lg:grid-cols-1 lg:max-w-3xl lg:mx-auto' // Adjust max-width as needed
          )}
        >
          {renderOvenCard('oven1')}
-         {useOvenStore.getState().isDualMode && renderOvenCard('oven2')}
+         {isDualMode && renderOvenCard('oven2')}
       </div>
     </div>
   );
 }
-
