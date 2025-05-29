@@ -26,11 +26,13 @@ jobs:
           endpoint: "chenggg/liteon"  # 指定 Docker Build Cloud 端點
           install: true
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (x86_64 & armv7)
         uses: docker/build-push-action@v6
         with:
-          platforms: linux/arm64  # 確保針對 ARM64 建置
-          tags: "${{ vars.DOCKER_USER }}/ovenview-app:latest"
+          platforms: linux/amd64,linux/arm/v7  # 建置 x86_64 和 ARMv7 版本
+          tags: |
+            ${{ vars.DOCKER_USER }}/ovenview-app:latest
+            ${{ vars.DOCKER_USER }}/ovenview-app:armv7
           push: true
           build-args: |
             BUILD_ENV=production
