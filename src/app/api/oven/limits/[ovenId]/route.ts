@@ -11,8 +11,8 @@ export async function GET(
     return NextResponse.json({ error: 'SQLite client not available' }, { status: 500 });
   }
 
-  const ovenId = params.ovenId; // 'oven1' or 'oven2'
-  const tableName = ovenId === 'oven1' ? 'oven1_history' : ovenId === 'oven2' ? 'oven2_history' : null;
+  const ovenIdParam = params.ovenId.toLowerCase(); // 'oven1' or 'oven2'
+  const tableName = ovenIdParam === 'oven1' ? 'oven1_history' : ovenIdParam === 'oven2' ? 'oven2_history' : null;
 
   if (!tableName) {
     return NextResponse.json({ error: 'Invalid ovenId' }, { status: 400 });
@@ -22,12 +22,14 @@ export async function GET(
     // Fetch the latest record to get current limits
     const row = await db.get(
       `SELECT low, high FROM ${tableName} 
-       ORDER BY timestamp DESC 
+       ORDER BY timestamp DESC, time DESC
        LIMIT 1`
     );
     
     if (!row || row.low === null || row.high === null) {
-      return NextResponse.json({ error: `No valid limit data found for ${ovenId}` }, { status: 404 });
+      console.warn(`[API Limits] No valid limit data found for ${ovenIdParam} in ${tableName}. Returning defaults.`);
+      // Return default/fallback limits if no valid data is found
+      return NextResponse.json({ lowerLimitCelsius: 50, upperLimitCelsius: 250 });
     }
     
     return NextResponse.json({
@@ -37,6 +39,7 @@ export async function GET(
 
   } catch (error) {
     console.error(`Error fetching limits for ${tableName} from SQLite:`, error);
-    return NextResponse.json({ error: `Failed to fetch limits for ${ovenId}` }, { status: 500 });
+    // Return default/fallback limits on error
+    return NextResponse.json({ lowerLimitCelsius: 50, upperLimitCelsius: 250 }, { status: 500 });
   }
 }

@@ -11,7 +11,6 @@ import {
   type SelectOnOff,
   type AutoTrackoutOption,
   type A1019PinValue,
-  type OvenSettings as OvenStoreSettingsData,
   type GeneralSettingsData,
 } from '@/store/oven-store';
 import {Button} from '@/components/ui/button';
@@ -24,7 +23,7 @@ import {
 } from '@/components/ui/card';
 import {useToast} from '@/hooks/use-toast';
 import {
-  Form, // This is FormProvider from react-hook-form, re-exported
+  Form, 
   FormControl,
   FormDescription,
   FormField,
@@ -62,12 +61,29 @@ const settingsSchema = z.object({
   tjKeepingTrackin: z.enum(['0', '1']) as z.ZodType<SelectOnOff>,
   a1019Pins: z.array(z.enum(['1', '2'])).length(8, "Must provide settings for all 8 pins") as z.ZodType<A1019PinValue[]>,
   oven1: ovenSettingsSchema,
-  oven2: ovenSettingsSchema.optional(),
+  oven2: ovenSettingsSchema.optional(), // oven2 is optional based on ovenType
 });
 
 
 export type SettingsFormData = z.infer<typeof settingsSchema>;
 export type OvenSettingsFormData = z.infer<typeof ovenSettingsSchema>;
+
+
+// Placeholder default values for the form, actual values will be populated by the reset effect from the store
+const formDefaultPlaceholders: SettingsFormData = {
+  ovenType: '3',
+  mesServerIp: '127.0.0.1', // This is read-only, will be overwritten by store/API
+  doorDetect: '0',
+  autoTrackOut: '0',
+  bindMaterialBox: '0',
+  buzzerNetworkDetect: '0',
+  czA5Rule: '0',
+  ignoreTime: 20,
+  tjKeepingTrackin: '0',
+  a1019Pins: Array(8).fill('1') as A1019PinValue[],
+  oven1: { name: 'Oven 1', offset1: 0, offset2: 0, offset3: 0, offset4: 0 },
+  oven2: { name: 'Oven 2', offset1: 0, offset2: 0, offset3: 0, offset4: 0 },
+};
 
 
 export default function Settings() {
@@ -83,12 +99,10 @@ export default function Settings() {
     ignoreTime: storeIgnoreTime,
     tjKeepingTrackin: storeTjKeep,
     a1019Pins: storePins,
-    ovens, // Contains names and offsets
-    // Actions to update store (will be called after successful API save)
+    ovens, 
     setOvenType: setStoreOvenType,
     updateGeneralSettings: updateStoreGeneralSettings,
     updateOvenSettings: updateStoreOvenSettings,
-    initializeStore,
     _hasHydrated,
     setHasHydrated
   } = useOvenStore();
@@ -96,20 +110,7 @@ export default function Settings() {
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
-    defaultValues: {
-      ovenType: '3',
-      mesServerIp: initialGeneralSettings.mesServerIp,
-      doorDetect: initialGeneralSettings.doorDetect,
-      autoTrackOut: initialGeneralSettings.autoTrackOut,
-      bindMaterialBox: initialGeneralSettings.bindMaterialBox,
-      buzzerNetworkDetect: initialGeneralSettings.buzzerNetworkDetect,
-      czA5Rule: initialGeneralSettings.czA5Rule,
-      ignoreTime: initialGeneralSettings.ignoreTime,
-      tjKeepingTrackin: initialGeneralSettings.tjKeepingTrackin,
-      a1019Pins: initialGeneralSettings.a1019Pins,
-      oven1: { name: ovens.oven1.name || '', offset1: ovens.oven1.offsets[0] ?? 0, offset2: ovens.oven1.offsets[1] ?? 0, offset3: ovens.oven1.offsets[2] ?? 0, offset4: ovens.oven1.offsets[3] ?? 0 },
-      oven2: { name: ovens.oven2.name || '', offset1: ovens.oven2.offsets[0] ?? 0, offset2: ovens.oven2.offsets[1] ?? 0, offset3: ovens.oven2.offsets[2] ?? 0, offset4: ovens.oven2.offsets[3] ?? 0 },
-    },
+    defaultValues: formDefaultPlaceholders, // Use placeholders
   });
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = form;
@@ -118,25 +119,27 @@ export default function Settings() {
 
   useEffect(() => {
     if (!_hasHydrated) {
-      setHasHydrated(true); // This will also trigger initializeStore if not already hydrated
+      setHasHydrated(true); 
     }
   }, [_hasHydrated, setHasHydrated]);
 
    useEffect(() => {
-    if (_hasHydrated) { // Only reset form if store is hydrated
+    if (_hasHydrated) { 
       const oven1Store = ovens.oven1;
       const oven2Store = ovens.oven2;
+      const isDualModeFromStore = storeOvenType === '1' || storeOvenType === '2';
+
       reset({
-        ovenType: storeOvenType || '3',
-        mesServerIp: storeMesIp || initialGeneralSettings.mesServerIp,
-        doorDetect: storeDoorDetect || initialGeneralSettings.doorDetect,
-        autoTrackOut: storeAutoTrackout || initialGeneralSettings.autoTrackOut,
-        bindMaterialBox: storeBindMaterial || initialGeneralSettings.bindMaterialBox,
-        buzzerNetworkDetect: storeBuzzer || initialGeneralSettings.buzzerNetworkDetect,
-        czA5Rule: storeCzRule || initialGeneralSettings.czA5Rule,
-        ignoreTime: storeIgnoreTime === undefined ? initialGeneralSettings.ignoreTime : storeIgnoreTime,
-        tjKeepingTrackin: storeTjKeep || initialGeneralSettings.tjKeepingTrackin,
-        a1019Pins: storePins && storePins.length === 8 ? storePins.map(String) as A1019PinValue[] : initialGeneralSettings.a1019Pins,
+        ovenType: storeOvenType || formDefaultPlaceholders.ovenType,
+        mesServerIp: storeMesIp || formDefaultPlaceholders.mesServerIp,
+        doorDetect: storeDoorDetect || formDefaultPlaceholders.doorDetect,
+        autoTrackOut: storeAutoTrackout || formDefaultPlaceholders.autoTrackOut,
+        bindMaterialBox: storeBindMaterial || formDefaultPlaceholders.bindMaterialBox,
+        buzzerNetworkDetect: storeBuzzer || formDefaultPlaceholders.buzzerNetworkDetect,
+        czA5Rule: storeCzRule || formDefaultPlaceholders.czA5Rule,
+        ignoreTime: storeIgnoreTime === undefined ? formDefaultPlaceholders.ignoreTime : storeIgnoreTime,
+        tjKeepingTrackin: storeTjKeep || formDefaultPlaceholders.tjKeepingTrackin,
+        a1019Pins: storePins && storePins.length === 8 ? storePins.map(String) as A1019PinValue[] : formDefaultPlaceholders.a1019Pins,
         oven1: {
           name: oven1Store?.name || '',
           offset1: oven1Store?.offsets?.[0] ?? 0,
@@ -144,19 +147,19 @@ export default function Settings() {
           offset3: oven1Store?.offsets?.[2] ?? 0,
           offset4: oven1Store?.offsets?.[3] ?? 0,
         },
-        oven2: currentIsDualMode ? {
+        oven2: isDualModeFromStore ? {
           name: oven2Store?.name || '',
           offset1: oven2Store?.offsets?.[0] ?? 0,
           offset2: oven2Store?.offsets?.[1] ?? 0,
           offset3: oven2Store?.offsets?.[2] ?? 0,
           offset4: oven2Store?.offsets?.[3] ?? 0,
-        } : { name: '', offset1: 0, offset2: 0, offset3: 0, offset4: 0 }, // Provide default empty if not dual
+        } : { name: '', offset1: 0, offset2: 0, offset3: 0, offset4: 0 }, 
       });
     }
   }, [
     _hasHydrated, storeOvenType, storeMesIp, storeDoorDetect, storeAutoTrackout,
     storeBindMaterial, storeBuzzer, storeCzRule, storeIgnoreTime, storeTjKeep,
-    storePins, ovens, reset, currentIsDualMode // Added currentIsDualMode
+    storePins, ovens, reset
   ]);
 
 
@@ -168,7 +171,6 @@ export default function Settings() {
           const currentPins = form.getValues('a1019Pins');
           const updatedPins = currentPins.map(pin => pin === '2' ? '1' : pin);
           setValue('a1019Pins', updatedPins as A1019PinValue[], { shouldValidate: true });
-          // Optionally clear oven2 fields if switching to single
            setValue('oven2', { name: '', offset1: 0, offset2: 0, offset3: 0, offset4: 0 });
         }
       }
@@ -179,9 +181,25 @@ export default function Settings() {
 
   const onSubmit = async (data: SettingsFormData) => {
     try {
-      const payload = {
-        ovenType: data.ovenType,
-        mesServerIp: data.mesServerIp, // Although read-only in UI, send it if it's part of the expected payload
+       // Prepare the payload structure expected by the POST API
+      const payloadForApi = {
+        ovenType: data.ovenType, // String '1'-'4'
+        // mesServerIp is read-only in UI, but included if API expects it
+        mesServerIp: data.mesServerIp || formDefaultPlaceholders.mesServerIp,
+        ovens: {
+          oven1: {
+            name: data.oven1.name,
+            offsets: [data.oven1.offset1 ?? 0, data.oven1.offset2 ?? 0, data.oven1.offset3 ?? 0, data.oven1.offset4 ?? 0],
+          },
+          // Conditionally include oven2 data only if it's a dual mode
+          ...( (data.ovenType === '1' || data.ovenType === '2') && data.oven2 && {
+            oven2: {
+              name: data.oven2.name,
+              offsets: [data.oven2.offset1 ?? 0, data.oven2.offset2 ?? 0, data.oven2.offset3 ?? 0, data.oven2.offset4 ?? 0],
+            }
+          })
+        },
+        // General settings also need to be part of the payload sent to the API
         doorDetect: data.doorDetect,
         autoTrackOut: data.autoTrackOut,
         bindMaterialBox: data.bindMaterialBox,
@@ -190,22 +208,13 @@ export default function Settings() {
         ignoreTime: data.ignoreTime,
         tjKeepingTrackin: data.tjKeepingTrackin,
         a1019Pins: data.a1019Pins,
-        ovens: {
-          oven1: {
-            name: data.oven1.name,
-            offsets: [data.oven1.offset1 ?? 0, data.oven1.offset2 ?? 0, data.oven1.offset3 ?? 0, data.oven1.offset4 ?? 0],
-          },
-          oven2: (data.ovenType === '1' || data.ovenType === '2') && data.oven2 ? {
-            name: data.oven2.name,
-            offsets: [data.oven2.offset1 ?? 0, data.oven2.offset2 ?? 0, data.oven2.offset3 ?? 0, data.oven2.offset4 ?? 0],
-          } : undefined, // Only include oven2 if dual mode
-        },
       };
+
 
       const response = await fetch('/api/oven/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadForApi),
       });
 
       if (!response.ok) {
@@ -216,7 +225,7 @@ export default function Settings() {
       // Update Zustand store after successful API save
       setStoreOvenType(data.ovenType as OvenTypeOption);
       updateStoreGeneralSettings({
-        mesServerIp: data.mesServerIp, // This is read-only in UI, but if API can update it.
+        mesServerIp: data.mesServerIp, 
         doorDetect: data.doorDetect as SelectOnOff,
         autoTrackOut: data.autoTrackOut as AutoTrackoutOption,
         bindMaterialBox: data.bindMaterialBox as SelectOnOff,
@@ -259,12 +268,11 @@ export default function Settings() {
 
   const translateError = (fieldError: any) => {
     if (!fieldError || !fieldError.message) return null;
-    // Assuming error messages from Zod are keys for next-intl
     return t(fieldError.message as any);
   };
 
   return (
-    <FormProvider {...form}> {/* Provide form context for OvenSettingsForm */}
+    <FormProvider {...form}> 
       <Form {...form}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <Card>
@@ -314,7 +322,6 @@ export default function Settings() {
                   control={control}
                   currentIsDualMode={currentIsDualMode}
               />
-              {/* Conditionally render Oven2SettingsForm based on currentIsDualMode */}
               {currentIsDualMode && (
                   <OvenSettingsForm
                       ovenId="oven2"
@@ -534,4 +541,3 @@ export default function Settings() {
     </FormProvider>
   );
 }
-
