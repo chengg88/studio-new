@@ -48,6 +48,7 @@ export async function GET() {
 
   try {
     const configString = await redis.get('OVEN:config');
+    console.log('Retrieved OVEN:config from Redis:', configString);
     const configExists = !!configString;
 
     if (!configExists) {
@@ -55,14 +56,23 @@ export async function GET() {
     }
 
     const redisConfig: RedisConfig = configExists ? JSON.parse(configString!) : {};
-
     const features = redisConfig.Features || {};
+
+    // 將 AutoTrackOut 明確轉換： true → '1'、false → '0'
+    const autoTrackOutValue: AutoTrackoutOption = features.AutoTrackOut === true
+      ? '1'
+      : features.AutoTrackOut === false
+        ? '0'
+        : features.AutoTrackOut !== undefined
+          ? String(features.AutoTrackOut) as AutoTrackoutOption
+          : '0';
+
     const responseData: FrontendReadyConfig = {
       configExists,
       ovenType: String(redisConfig.OvenType || '3') as OvenTypeOption,
       mesServerIp: '127.0.0.1',
       doorDetect: features.DoorDet ? '1' : '0',
-      autoTrackOut: features.AutoTrackOut !== undefined ? String(features.AutoTrackOut) as AutoTrackoutOption : '0',
+      autoTrackOut: autoTrackOutValue,
       bindMaterialBox: features.Bind_MaterialBox ? '1' : '0',
       buzzerNetworkDetect: features.BuzzerNetworkDet ? '1' : '0',
       czA5Rule: features.cz_a5_rule ? '1' : '0',
@@ -81,8 +91,10 @@ export async function GET() {
       },
     };
 
-    return NextResponse.json(responseData);
-  } catch (error) {
+    return NextResponse.json(responseData, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  } catch (error: any) {
     console.error('Error fetching OVEN:config from Redis:', error);
     return NextResponse.json({ error: 'Failed to fetch configuration' }, { status: 500 });
   }
@@ -109,7 +121,11 @@ export async function POST(request: Request) {
       Thermometer: 0,
       Features: {
         DoorDet: newSettings.doorDetect === '1',
-        AutoTrackOut: newSettings.autoTrackOut === '0' ? false : newSettings.autoTrackOut === '1' ? true : 2,
+        AutoTrackOut: newSettings.autoTrackOut === '0'
+          ? false
+          : newSettings.autoTrackOut === '1'
+            ? true
+            : 2,
         Bind_MaterialBox: newSettings.bindMaterialBox === '1',
         BuzzerNetworkDet: newSettings.buzzerNetworkDetect === '1',
         cz_a5_rule: newSettings.czA5Rule === '1',
@@ -132,7 +148,7 @@ export async function POST(request: Request) {
     await redis.set('OVEN:config', JSON.stringify(redisConfigToSave));
 
     return NextResponse.json({ message: 'Configuration saved successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving configuration to Redis:', error);
     return NextResponse.json({ error: 'Failed to save configuration' }, { status: 500 });
   }
