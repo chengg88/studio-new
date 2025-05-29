@@ -9,6 +9,7 @@ if (!redisUrl) {
 
 // Conditional instantiation
 const redis = redisUrl ? new Redis(redisUrl) : null;
+console.log('Redis connection status:', redis?.status);
 
 redis?.on('error', (err) => {
   console.error('Redis client error:', err);
