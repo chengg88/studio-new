@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - "main"
+  workflow_dispatch:  # 允許手動執行 Workflow
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
@@ -21,13 +22,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver: cloud  # 透過 Docker Build Cloud 來建置映像
+          driver: cloud  # 使用 Docker Build Cloud 來建置映像
           endpoint: "chenggg/liteon"  # 指定 Docker Build Cloud 端點
           install: true
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          platforms: linux/arm64
+          platforms: linux/arm64  # 確保針對 ARM64 建置
           tags: "${{ vars.DOCKER_USER }}/ovenview-app:latest"
-          push: true  # 確保映像成功推送到 Docker Hub
+          push: true
+          build-args: |
+            BUILD_ENV=production
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          progress: plain
