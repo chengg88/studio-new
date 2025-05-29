@@ -22,18 +22,19 @@ export async function GET(
     // Fetch the latest record to get current limits
     const row = await db.get(
       `SELECT low, high FROM ${tableName} 
-       ORDER BY STRFTIME('%s', timestamp || ' ' || time) DESC 
+       ORDER BY timestamp DESC 
        LIMIT 1`
     );
-
-    if (!row) {
-      return NextResponse.json({ error: `No limit data found for ${ovenId}` }, { status: 404 });
+    
+    if (!row || row.low === null || row.high === null) {
+      return NextResponse.json({ error: `No valid limit data found for ${ovenId}` }, { status: 404 });
     }
-
+    
     return NextResponse.json({
       lowerLimitCelsius: row.low,
       upperLimitCelsius: row.high,
     });
+
   } catch (error) {
     console.error(`Error fetching limits for ${tableName} from SQLite:`, error);
     return NextResponse.json({ error: `Failed to fetch limits for ${ovenId}` }, { status: 500 });
